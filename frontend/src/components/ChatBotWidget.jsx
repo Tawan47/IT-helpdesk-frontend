@@ -3,7 +3,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { MessageSquare, Send, X, LifeBuoy, FilePlus } from 'lucide-react';
 import axios from 'axios';
 
-const API_URL = 'http://localhost:5000/api';
+const API_URL = import.meta.env.VITE_API_URL ||'http://localhost:5000/api';
 
 export default function ChatBotWidget({ onCreateTicket }) {
   const [open, setOpen] = useState(false);

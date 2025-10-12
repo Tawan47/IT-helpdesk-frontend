@@ -11,7 +11,7 @@ import {
   MapPin, MessageSquareText, Image as ImageIcon, X, ClipboardList, Send
 } from 'lucide-react';
 
-const API_URL = 'http://localhost:5000/api';
+const API_URL = import.meta.env.VITE_API_URL ||'http://localhost:5000/api';
 
 /* ========== UI helpers ========== */
 const Badge = ({ tone="slate", children }) => {

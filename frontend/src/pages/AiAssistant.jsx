@@ -3,7 +3,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Bot, Send, Sparkles, RotateCcw } from 'lucide-react';
 
-const API_URL = 'http://localhost:5000/api';
+const API_URL = import.meta.env.VITE_API_URL ||'http://localhost:5000/api';
 
 export default function AiAssistant() {
   const { currentUser } = useAuth();

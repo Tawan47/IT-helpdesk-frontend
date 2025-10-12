@@ -18,7 +18,7 @@ import {
   TableBody, TableContainer, Tooltip, TextField
 } from '@mui/material';
 
-const API_URL = 'http://localhost:5000/api';
+const API_URL = import.meta.env.VITE_API_URL ||'http://localhost:5000/api';
 
 /* ============== small helpers ============== */
 function classNames(...a) { return a.filter(Boolean).join(' '); }

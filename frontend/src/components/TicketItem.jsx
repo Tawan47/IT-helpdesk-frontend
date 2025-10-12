@@ -6,7 +6,7 @@ import TicketStatusTracker from './TicketStatusTracker';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
 
-const API_URL = 'http://localhost:5000/api';
+const API_URL = import.meta.env.VITE_API_URL ||'http://localhost:5000/api';
 
 /**
  * คอมโพเนนต์สำหรับแสดงใบแจ้งซ่อมแต่ละรายการ พร้อมฟังก์ชันการทำงานทั้งหมด
