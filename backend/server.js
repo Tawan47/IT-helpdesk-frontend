@@ -11,6 +11,8 @@
 // =================================================================
 require('dotenv').config();
 
+console.log('My secret variable is:', process.env.TEST_VAR);
+
 const express = require('express');
 const cors = require('cors');
 const knex = require('./db/knex');
