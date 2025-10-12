@@ -3,7 +3,9 @@ import React, { useState, useRef, useEffect } from 'react';
 import { MessageSquare, Send, X, LifeBuoy, FilePlus } from 'lucide-react';
 import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL ||'http://localhost:5000/api';
+// ✅ 1. กำหนดค่า Base URL ของ API ให้ถูกต้อง
+//    ดึงจาก Environment Variable (สำหรับตอน Deploy) หรือใช้ localhost (สำหรับตอนพัฒนา)
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 export default function ChatBotWidget({ onCreateTicket }) {
   const [open, setOpen] = useState(false);
@@ -35,7 +37,8 @@ export default function ChatBotWidget({ onCreateTicket }) {
           content: m.content
         }));
 
-      const r = await axios.post(`${API_URL}/ai/assist`, {
+      // ✅ 2. สร้าง URL เต็มโดยต่อ endpoint ที่ถูกต้อง (`/api/ai/assist`)
+      const r = await axios.post(`${API_BASE_URL}/api/ai/assist`, {
         message: text,
         history
       });

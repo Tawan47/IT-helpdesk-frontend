@@ -1,17 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { AlertTriangle, CheckCircle, Hourglass, UserCheck, Star, Users, HardHat, Ticket } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { Star, Users, HardHat, Ticket } from 'lucide-react';
+
+// ✅ 1. กำหนดค่า Base URL ของ API ให้ถูกต้อง
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 // --- Sub-component: การ์ดสรุปข้อมูล Analytics ---
 function AnalyticsStatCard({ title, value, icon }) {
     const IconComponent = icon;
     return (
-        <div className="bg-white p-6 rounded-xl shadow-md">
+        <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-md border border-slate-200 dark:border-slate-700">
             <div className="flex items-center">
                 <IconComponent className="h-8 w-8 text-indigo-500" />
                 <div className="ml-4">
-                    <p className="text-3xl font-bold text-gray-900">{value}</p>
-                    <p className="text-sm font-medium text-gray-500">{title}</p>
+                    <p className="text-3xl font-bold text-gray-900 dark:text-white">{value}</p>
+                    <p className="text-sm font-medium text-gray-500 dark:text-slate-400">{title}</p>
                 </div>
             </div>
         </div>
@@ -27,9 +30,10 @@ export default function AnalyticsDashboard() {
     useEffect(() => {
         const fetchAnalyticsData = async () => {
             try {
+                // ✅ 2. แก้ไขให้ใช้ API_BASE_URL ในการเรียก API ทั้งหมด
                 const [statsRes, problemsRes] = await Promise.all([
-                    fetch('http://localhost:5000/api/analytics/stats'),
-                    fetch('http://localhost:5000/api/analytics/common-problems')
+                    fetch(`${API_BASE_URL}/api/analytics/stats`),
+                    fetch(`${API_BASE_URL}/api/analytics/common-problems`)
                 ]);
                 if (!statsRes.ok || !problemsRes.ok) throw new Error('ไม่สามารถดึงข้อมูลได้');
                 const statsData = await statsRes.json();
@@ -48,8 +52,6 @@ export default function AnalyticsDashboard() {
     if (loading) return <div className="text-center p-8">กำลังโหลดข้อมูล...</div>;
     if (error) return <div className="bg-red-100 text-red-700 p-4 rounded-lg">{error}</div>;
 
-    const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
-
     return (
         <div className="space-y-8">
             {/* General Stats */}
@@ -62,8 +64,8 @@ export default function AnalyticsDashboard() {
 
             {/* Charts */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <div className="bg-white p-6 rounded-xl shadow-md">
-                    <h3 className="text-lg font-semibold text-gray-800 mb-4">5 ปัญหาที่พบบ่อยที่สุด</h3>
+                <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-md border border-slate-200 dark:border-slate-700">
+                    <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">5 ปัญหาที่พบบ่อยที่สุด</h3>
                     <ResponsiveContainer width="100%" height={300}>
                         <BarChart data={commonProblems} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
                             <CartesianGrid strokeDasharray="3 3" />
@@ -76,7 +78,7 @@ export default function AnalyticsDashboard() {
                     </ResponsiveContainer>
                 </div>
                 {/* Add more charts here in the future */}
-                <div className="bg-white p-6 rounded-xl shadow-md flex items-center justify-center">
+                <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-md flex items-center justify-center border border-slate-200 dark:border-slate-700">
                      <p className="text-gray-400">พื้นที่สำหรับกราฟอื่นๆ ในอนาคต</p>
                 </div>
             </div>

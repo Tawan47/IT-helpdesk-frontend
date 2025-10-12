@@ -6,7 +6,8 @@ import TicketStatusTracker from './TicketStatusTracker';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL ||'http://localhost:5000/api';
+// ✅ 1. กำหนดค่า Base URL ของ API ให้ถูกต้อง
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 /**
  * คอมโพเนนต์สำหรับแสดงใบแจ้งซ่อมแต่ละรายการ พร้อมฟังก์ชันการทำงานทั้งหมด
@@ -29,7 +30,8 @@ export default function TicketItem({ ticket, userType, onUpdateStatus = () => {}
         if (!ticket.id) return;
         setIsLoadingChat(true);
         try {
-            const response = await axios.get(`${API_URL}/tickets/${ticket.id}/messages`);
+            // ✅ 2. แก้ไขให้ใช้ API_BASE_URL
+            const response = await axios.get(`${API_BASE_URL}/api/tickets/${ticket.id}/messages`);
             setMessages(response.data);
         } catch (error) {
             console.error("Failed to fetch chat messages:", error);
@@ -77,7 +79,8 @@ export default function TicketItem({ ticket, userType, onUpdateStatus = () => {}
         };
 
         try {
-            await axios.post(`${API_URL}/tickets/${ticket.id}/messages`, messageData);
+            // ✅ 3. แก้ไขให้ใช้ API_BASE_URL
+            await axios.post(`${API_BASE_URL}/api/tickets/${ticket.id}/messages`, messageData);
             setNewMessage(''); // เคลียร์ช่องพิมพ์หลังจากส่งสำเร็จ
         } catch (error) {
             console.error("Failed to send message:", error);
@@ -90,7 +93,7 @@ export default function TicketItem({ ticket, userType, onUpdateStatus = () => {}
     const [rating, setRating] = useState(0);
     const [feedback, setFeedback] = useState('');
     const [ratingError, setRatingError] = useState('');
- 
+
     const handleRatingSubmit = (e) => {
         e.preventDefault();
         if (rating > 0) {
@@ -151,8 +154,9 @@ export default function TicketItem({ ticket, userType, onUpdateStatus = () => {}
                             {ticket.image_url && (
                                 <div>
                                     <p className="font-semibold text-slate-700 dark:text-slate-300 flex items-center mb-2"><ImageIcon size={16} className="mr-2"/> รูปภาพประกอบ:</p>
-                                    <a href={`http://localhost:5000${ticket.image_url}`} target="_blank" rel="noopener noreferrer" className="inline-block">
-                                        <img src={`http://localhost:5000${ticket.image_url}`} alt="Ticket attachment" className="rounded-lg max-w-full sm:max-w-xs shadow-md border dark:border-slate-600 transition-transform hover:scale-105" />
+                                    {/* ✅ 4. แก้ไข URL ของรูปภาพให้ถูกต้อง */}
+                                    <a href={`${API_BASE_URL}${ticket.image_url}`} target="_blank" rel="noopener noreferrer" className="inline-block">
+                                        <img src={`${API_BASE_URL}${ticket.image_url}`} alt="Ticket attachment" className="rounded-lg max-w-full sm:max-w-xs shadow-md border dark:border-slate-600 transition-transform hover:scale-105" />
                                     </a>
                                 </div>
                             )}

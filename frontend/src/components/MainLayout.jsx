@@ -1,4 +1,3 @@
-// src/components/MainLayout.jsx
 import React, { useEffect, useMemo, useState } from 'react';
 import { NavLink, Link, Outlet, useLocation } from 'react-router-dom';
 import ChatBotWidget from './ChatBotWidget';
@@ -11,6 +10,10 @@ import {
   HardHat, PieChart as ChartIcon, Sun, Moon, UserCircle, Box as InventoryIcon,
   PanelLeftClose, PanelLeftOpen, Bot
 } from 'lucide-react';
+
+// ✅ 1. กำหนดค่า API Base URL ที่นี่ เพื่อให้ Header component นำไปใช้
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
 
 /* ================= Sidebar ================= */
 function Sidebar({ role, collapsed, onToggle }) {
@@ -117,7 +120,8 @@ function Header({ title, onToggleSidebar }) {
 
   useEffect(() => {
     if (currentUser?.id) {
-      fetch(`http://localhost:5000/api/notifications/${currentUser.id}`)
+      // ✅ 2. แก้ไขให้ใช้ API_BASE_URL
+      fetch(`${API_BASE_URL}/api/notifications/${currentUser.id}`)
         .then((res) => res.json())
         .then((data) => Array.isArray(data) && setNotifications(data))
         .catch(console.error);
@@ -138,7 +142,8 @@ function Header({ title, onToggleSidebar }) {
     if (unreadCount > 0) {
       setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
       try {
-        await fetch('http://localhost:5000/api/notifications/read', {
+        // ✅ 3. แก้ไขให้ใช้ API_BASE_URL
+        await fetch(`${API_BASE_URL}/api/notifications/read`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ userId: currentUser.id }),

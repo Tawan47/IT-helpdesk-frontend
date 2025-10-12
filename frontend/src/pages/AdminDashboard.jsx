@@ -1,4 +1,3 @@
-// src/pages/AdminDashboard.jsx
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
@@ -18,7 +17,8 @@ import {
   TableBody, TableContainer, Tooltip, TextField
 } from '@mui/material';
 
-const API_URL = import.meta.env.VITE_API_URL ||'http://localhost:5000/api';
+// ✅ 1. แก้ไขการกำหนดค่า Base URL ให้ถูกต้อง
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 /* ============== small helpers ============== */
 function classNames(...a) { return a.filter(Boolean).join(' '); }
@@ -278,14 +278,16 @@ function InventoryPanel({ inventory, reload }) {
   };
 
   const save = async () => {
-    if (editing) await axios.put(`${API_URL}/inventory/${editing.id}`, form);
-    else await axios.post(`${API_URL}/inventory`, form);
+    // ✅ 2. แก้ไขการเรียก API ทั้งหมดในฟังก์ชันนี้
+    if (editing) await axios.put(`${API_BASE_URL}/api/inventory/${editing.id}`, form);
+    else await axios.post(`${API_BASE_URL}/api/inventory`, form);
     setOpen(false); reload();
   };
 
   const remove = async (id) => {
     if (confirm('ลบรายการนี้หรือไม่?')) {
-      await axios.delete(`${API_URL}/inventory/${id}`);
+      // ✅ 3. แก้ไขการเรียก API
+      await axios.delete(`${API_BASE_URL}/api/inventory/${id}`);
       reload();
     }
   };
@@ -396,10 +398,11 @@ export default function AdminDashboard() {
 
   const fetchAll = useCallback(async () => {
     try {
+      // ✅ 4. แก้ไขการเรียก API
       const [t, u, inv] = await Promise.all([
-        axios.get(`${API_URL}/tickets`),
-        axios.get(`${API_URL}/users`),
-        axios.get(`${API_URL}/inventory`),
+        axios.get(`${API_BASE_URL}/api/tickets`),
+        axios.get(`${API_BASE_URL}/api/users`),
+        axios.get(`${API_BASE_URL}/api/inventory`),
       ]);
       setTickets(Array.isArray(t.data) ? t.data : []);
       setUsers(Array.isArray(u.data) ? u.data : []);
@@ -409,7 +412,8 @@ export default function AdminDashboard() {
     }
 
     try {
-      const r = await axios.get(`${API_URL}/technicians/online`);
+      // ✅ 5. แก้ไขการเรียก API
+      const r = await axios.get(`${API_BASE_URL}/api/technicians/online`);
       if (typeof r.data?.count === 'number') {
         setOnlineTechs(r.data.count);
       } else {
@@ -442,10 +446,12 @@ export default function AdminDashboard() {
   }, [socket, fetchAll]);
 
   const assignTicket = async (ticketId, technicianId) => {
-    await axios.put(`${API_URL}/tickets/${ticketId}`, { technician_id: technicianId, status: 'Assigned' });
+    // ✅ 6. แก้ไขการเรียก API
+    await axios.put(`${API_BASE_URL}/api/tickets/${ticketId}`, { technician_id: technicianId, status: 'Assigned' });
   };
   const changeRole = async (userId, role) => {
-    await axios.put(`${API_URL}/users/${userId}/role`, { role });
+    // ✅ 7. แก้ไขการเรียก API
+    await axios.put(`${API_BASE_URL}/api/users/${userId}/role`, { role });
   };
 
   const stats = useMemo(() => ({

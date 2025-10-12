@@ -1,4 +1,3 @@
-// src/pages/UserDashboard.jsx
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import axios from 'axios';
 import { useAuth } from '../contexts/AuthContext';
@@ -11,7 +10,8 @@ import {
   MapPin, MessageSquareText, Image as ImageIcon, X, ClipboardList, Send
 } from 'lucide-react';
 
-const API_URL = import.meta.env.VITE_API_URL ||'http://localhost:5000/api';
+// ✅ 1. แก้ไขการกำหนดค่า Base URL ให้ถูกต้อง
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 /* ========== UI helpers ========== */
 const Badge = ({ tone="slate", children }) => {
@@ -47,7 +47,8 @@ function ChatPanel({ ticketId, ticketStatus }) {
     if (!ticketId) return;
     setLoading(true);
     try {
-      const r = await axios.get(`${API_URL}/tickets/${ticketId}/messages`);
+      // ✅ 2. แก้ไขการเรียก API
+      const r = await axios.get(`${API_BASE_URL}/api/tickets/${ticketId}/messages`);
       setMsgs(Array.isArray(r.data) ? r.data : []);
     } catch (e) {
       console.error('[chat] load', e);
@@ -75,7 +76,8 @@ function ChatPanel({ ticketId, ticketStatus }) {
   const send = async () => {
     if (!text.trim() || !currentUser?.id || ticketStatus === 'Completed') return;
     try {
-      await axios.post(`${API_URL}/tickets/${ticketId}/messages`, {
+      // ✅ 3. แก้ไขการเรียก API
+      await axios.post(`${API_BASE_URL}/api/tickets/${ticketId}/messages`, {
         sender_id: currentUser.id,
         message: text.trim(),
       });
@@ -134,7 +136,7 @@ function ChatPanel({ ticketId, ticketStatus }) {
           disabled={disabled}
           placeholder={disabled ? 'ปิดงานแล้ว — ไม่สามารถส่งข้อความได้' : 'พิมพ์ข้อความ…'}
           className={`flex-1 px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800
-                      text-slate-800 dark:text-slate-100 text-base md:text-sm ${disabled ? 'opacity-60 cursor-not-allowed' : ''}`}
+                         text-slate-800 dark:text-slate-100 text-base md:text-sm ${disabled ? 'opacity-60 cursor-not-allowed' : ''}`}
         />
         <button
           onClick={send}
@@ -165,9 +167,9 @@ function Drawer({ open, onClose, ticket }) {
       <div
         /* Drawer เต็มสูงแบบคอลัมน์: เนื้อหาเลื่อนเอง Chat ไม่ถูกดัน */
         className="absolute right-0 top-0 h-full w-full sm:w-[520px] bg-white dark:bg-slate-900
-                   border-l border-slate-200 dark:border-slate-700 shadow-2xl
-                   transform translate-x-0 transition-transform duration-300
-                   flex flex-col"
+                         border-l border-slate-200 dark:border-slate-700 shadow-2xl
+                         transform translate-x-0 transition-transform duration-300
+                         flex flex-col"
         onClick={(e)=>e.stopPropagation()}
       >
         <div className="p-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
@@ -216,8 +218,9 @@ function Drawer({ open, onClose, ticket }) {
               {ticket.image_url && (
                 <div>
                   <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">รูปภาพที่แนบ</p>
+                  {/* ✅ 4. แก้ไข URL ของรูปภาพ */}
                   <img
-                    src={`http://localhost:5000${ticket.image_url}`}
+                    src={`${API_BASE_URL}${ticket.image_url}`}
                     alt="แนบ"
                     className="w-full max-h-[40vh] object-contain rounded-xl border border-slate-200 dark:border-slate-700"
                   />
@@ -444,7 +447,8 @@ export default function UserDashboard() {
     if (!currentUser?.id) return;
     setLoading(true);
     try {
-      const r = await axios.get(`${API_URL}/tickets`, { params: { userId: currentUser.id } });
+      // ✅ 5. แก้ไขการเรียก API
+      const r = await axios.get(`${API_BASE_URL}/api/tickets`, { params: { userId: currentUser.id } });
       setTickets(Array.isArray(r.data) ? r.data : []);
     } catch (e) {
       console.error('[UserDashboard] tickets', e);

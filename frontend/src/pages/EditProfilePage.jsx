@@ -3,7 +3,8 @@ import { useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL ||'http://localhost:5000/api';
+// ✅ 1. กำหนดค่า Base URL ของ API ให้ถูกต้อง
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 export default function EditProfilePage() {
   const { currentUser, setCurrentUser } = useAuth();
@@ -21,7 +22,8 @@ export default function EditProfilePage() {
     let cancelled = false;
     (async () => {
       try {
-        const res = await axios.get(`${API_URL}/me`, { params: { userId: currentUser.id } });
+        // ✅ 2. แก้ไขให้ใช้ API_BASE_URL และต่อ endpoint ที่ถูกต้อง
+        const res = await axios.get(`${API_BASE_URL}/api/me`, { params: { userId: currentUser.id } });
         const data = res.data;
         if (!cancelled) setForm({ name: data?.name ?? '', email: data?.email ?? '' });
       } catch (e) {
@@ -41,7 +43,8 @@ export default function EditProfilePage() {
     setErr('');
     setSaving(true);
     try {
-      const res = await axios.put(`${API_URL}/me`, form, { params: { userId: currentUser.id } });
+      // ✅ 3. แก้ไขให้ใช้ API_BASE_URL และต่อ endpoint ที่ถูกต้อง
+      const res = await axios.put(`${API_BASE_URL}/api/me`, form, { params: { userId: currentUser.id } });
 
       // ✅ อัปเดต Context + localStorage ผ่าน setter ใน AuthContext
       if (setCurrentUser) {

@@ -1,9 +1,9 @@
-// src/pages/AiAssistant.jsx
 import React, { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Bot, Send, Sparkles, RotateCcw } from 'lucide-react';
 
-const API_URL = import.meta.env.VITE_API_URL ||'http://localhost:5000/api';
+// ✅ 1. กำหนดค่า Base URL ของ API ให้ถูกต้อง
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 export default function AiAssistant() {
   const { currentUser } = useAuth();
@@ -31,7 +31,8 @@ export default function AiAssistant() {
     setHistory((h) => [...h, { role: 'user', content }]);
     setLoading(true);
     try {
-      const res = await fetch(`${API_URL}/ai/assist`, {
+      // ✅ 2. สร้าง URL เต็มโดยต่อ endpoint ที่ถูกต้อง (`/api/ai/assist`)
+      const res = await fetch(`${API_BASE_URL}/api/ai/assist`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

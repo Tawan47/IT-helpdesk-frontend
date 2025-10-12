@@ -2,6 +2,9 @@ import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { UploadCloud } from 'lucide-react';
 
+// ✅ 1. กำหนดค่า Base URL ของ API ให้ถูกต้อง
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
 /**
  * A form component for users to submit new repair tickets.
  * This version includes enhanced styling and an image upload feature.
@@ -35,7 +38,8 @@ export default function TicketForm({ onSubmitSuccess }) {
     }
 
     try {
-      const response = await fetch('http://localhost:5000/api/tickets', {
+      // ✅ 2. สร้าง URL เต็มโดยต่อ endpoint ที่ถูกต้อง (`/api/tickets`)
+      const response = await fetch(`${API_BASE_URL}/api/tickets`, {
         method: 'POST',
         body: formData,
       });

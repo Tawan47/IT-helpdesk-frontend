@@ -1,4 +1,3 @@
-// src/pages/TechnicianDashboard.jsx
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import TicketList from '../components/TicketList';
 import { useAuth } from '../contexts/AuthContext';
@@ -9,7 +8,8 @@ import {
 } from 'lucide-react';
 import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL ||'http://localhost:5000/api';
+// ✅ 1. แก้ไขการกำหนดค่า Base URL ให้ถูกต้อง
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 function Pill({ active, onClick, children }) {
   return (
@@ -81,10 +81,11 @@ export default function TechnicianDashboard() {
     try {
       setLoading(true);
       setError('');
+      // ✅ 2. แก้ไขการเรียก API ทั้งหมดในฟังก์ชันนี้
       const [tRes, uRes, meRes] = await Promise.all([
-        axios.get(`${API_URL}/tickets`),
-        axios.get(`${API_URL}/users`),
-        axios.get(`${API_URL}/me`, { params: { userId: technicianId } })
+        axios.get(`${API_BASE_URL}/api/tickets`),
+        axios.get(`${API_BASE_URL}/api/users`),
+        axios.get(`${API_BASE_URL}/api/me`, { params: { userId: technicianId } })
       ]);
       setAllTickets(Array.isArray(tRes.data) ? tRes.data : []);
       setUsers(Array.isArray(uRes.data) ? uRes.data : []);
@@ -118,8 +119,9 @@ export default function TechnicianDashboard() {
     if (!technicianId || saving) return;
     setSaving(true);
     try {
+      // ✅ 3. แก้ไขการเรียก API
       const res = await axios.put(
-        `${API_URL}/me/availability`,
+        `${API_BASE_URL}/api/me/availability`,
         { accepting: !accepting },
         { params: { userId: technicianId } }
       );
@@ -137,7 +139,8 @@ export default function TechnicianDashboard() {
       prev.map(t => t.id === ticketId ? { ...t, technician_id: technicianId, status: 'Assigned' } : t)
     );
     try {
-      await axios.put(`${API_URL}/tickets/${ticketId}`, {
+      // ✅ 4. แก้ไขการเรียก API
+      await axios.put(`${API_BASE_URL}/api/tickets/${ticketId}`, {
         technician_id: technicianId,
         status: 'Assigned'
       });
@@ -158,7 +161,8 @@ export default function TechnicianDashboard() {
     // อัปเดตทันที (optimistic)
     setAllTickets(prev => prev.map(t => t.id === ticketId ? { ...t, status: newStatus } : t));
     try {
-      await axios.put(`${API_URL}/tickets/${ticketId}`, { status: newStatus });
+      // ✅ 5. แก้ไขการเรียก API
+      await axios.put(`${API_BASE_URL}/api/tickets/${ticketId}`, { status: newStatus });
     } catch (err) {
       console.error(err);
       setError('ไม่สามารถอัปเดตสถานะได้');
@@ -279,8 +283,8 @@ export default function TechnicianDashboard() {
               onChange={(e)=>setQ(e.target.value)}
               placeholder="ค้นหาหัวข้อ/รายละเอียด/ID"
               className="w-full pl-9 pr-3 py-2 rounded-xl border text-base sm:text-sm
-                         border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900
-                         text-slate-800 dark:text-slate-100"
+                           border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900
+                           text-slate-800 dark:text-slate-100"
             />
           </div>
           <div className="flex items-center gap-2">
@@ -289,8 +293,8 @@ export default function TechnicianDashboard() {
               value={status}
               onChange={(e)=>setStatus(e.target.value)}
               className="w-full sm:w-auto px-3 py-2 rounded-xl border text-base sm:text-sm
-                         border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900
-                         text-slate-800 dark:text-slate-100"
+                           border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900
+                           text-slate-800 dark:text-slate-100"
               title="ตัวกรองสถานะ"
             >
               {['All','Submitted','Assigned','In Progress','Completed'].map(s => (
