@@ -14,6 +14,7 @@ require('dotenv').config();
 console.log('--- ALL ENVIRONMENT VARIABLES SEEN BY SERVER ---');
 console.log(process.env); // <--- เพิ่มบรรทัดนี้เพื่อพิมพ์ทุกอย่างออกมา
 console.log('--- END OF VARIABLES ---');
+console.log(`SERVER IS ALLOWING ORIGIN: ${process.env.FRONTEND_ORIGIN}`);
 
 const express = require('express');
 const cors = require('cors');
