@@ -25,7 +25,7 @@ const path = require('path');
 const nodemailer = require('nodemailer');
 const axios = require('axios');
 
-const FRONTEND_ORIGIN = 'http://localhost:5173';
+const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN || 'http://localhost:5173';
 const app = express();
 const server = http.createServer(app);
 
