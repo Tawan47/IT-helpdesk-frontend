@@ -11,7 +11,9 @@
 // =================================================================
 require('dotenv').config();
 
-console.log('My secret variable is:', process.env.TEST_VAR);
+console.log('--- ALL ENVIRONMENT VARIABLES SEEN BY SERVER ---');
+console.log(process.env); // <--- เพิ่มบรรทัดนี้เพื่อพิมพ์ทุกอย่างออกมา
+console.log('--- END OF VARIABLES ---');
 
 const express = require('express');
 const cors = require('cors');
