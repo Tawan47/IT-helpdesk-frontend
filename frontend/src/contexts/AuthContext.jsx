@@ -1,6 +1,9 @@
 // src/contexts/AuthContext.jsx
 import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
 
+// ✅ 1. ดึง API URL มาจาก Environment Variable
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
 const STORAGE_KEY = 'currentUser';
 const AuthContext = createContext(null);
 
@@ -38,7 +41,8 @@ export function AuthProvider({ children }) {
   const login = async (email, password) => {
     setLoading(true);
     try {
-      const res = await fetch('http://localhost:5000/api/login', {
+      // ✅ 2. เปลี่ยนมาใช้ API_BASE_URL ที่เราสร้างไว้
+      const res = await fetch(`${API_BASE_URL}/api/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
@@ -58,7 +62,8 @@ export function AuthProvider({ children }) {
   const register = async (name, email, password) => {
     setLoading(true);
     try {
-      const res = await fetch('http://localhost:5000/api/register', {
+      // ✅ 3. เปลี่ยนมาใช้ API_BASE_URL ที่เราสร้างไว้
+      const res = await fetch(`${API_BASE_URL}/api/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, email, password }),
