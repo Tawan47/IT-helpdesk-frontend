@@ -1,3 +1,4 @@
+// TEST CHANGE 12345
 // src/contexts/AuthContext.jsx
 import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
 
