@@ -1,0 +1,9 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "https://it-helpdesk-backend-hnfm.onrender.com/api/:path*"
+    }
+  ]
+}
+
