@@ -1,4 +1,3 @@
-// src/components/ChatBotWidget.jsx
 import React, { useState, useRef, useEffect } from 'react';
 import { MessageSquare, Send, X, LifeBuoy, FilePlus } from 'lucide-react';
 import axios from 'axios';

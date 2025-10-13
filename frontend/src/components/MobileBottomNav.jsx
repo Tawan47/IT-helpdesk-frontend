@@ -1,4 +1,3 @@
-// src/components/MobileBottomNav.jsx
 import { NavLink } from 'react-router-dom';
 import { Home, Wrench, User2 } from 'lucide-react';
 
@@ -9,8 +8,8 @@ export default function MobileBottomNav() {
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-slate-200 dark:border-slate-700
-                    bg-white/95 dark:bg-slate-900/90 backdrop-blur supports-[backdrop-filter]:backdrop-blur
-                    pb-[max(env(safe-area-inset-bottom),8px)]">
+                   bg-white/95 dark:bg-slate-900/90 backdrop-blur supports-[backdrop-filter]:backdrop-blur
+                   pb-[max(env(safe-area-inset-bottom),8px)] lg:hidden">
       <div className="max-w-screen-md mx-auto flex">
         <NavLink to="/dashboard" className={({isActive})=>`${item} ${isActive?active:idle}`}>
           <Home size={18}/> หน้าหลัก
