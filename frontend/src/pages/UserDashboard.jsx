@@ -10,7 +10,7 @@ import {
   MapPin, MessageSquareText, Image as ImageIcon, X, ClipboardList, Send
 } from 'lucide-react';
 
-// ✅ 1. แก้ไขการกำหนดค่า Base URL ให้ถูกต้อง
+// ✅ 1. กำหนดค่า Base URL ให้ถูกต้อง
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 /* ========== UI helpers ========== */
@@ -39,15 +39,12 @@ function ChatPanel({ ticketId, ticketStatus }) {
   const [text, setText] = useState('');
   const bottomRef = useRef(null);
 
-  // scroll to last msg
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [msgs, loading]);
 
-  // load history
   const load = useCallback(async () => {
     if (!ticketId) return;
     setLoading(true);
     try {
-      // ✅ 2. แก้ไขการเรียก API
       const r = await axios.get(`${API_BASE_URL}/api/tickets/${ticketId}/messages`);
       setMsgs(Array.isArray(r.data) ? r.data : []);
     } catch (e) {
@@ -59,7 +56,6 @@ function ChatPanel({ ticketId, ticketStatus }) {
 
   useEffect(() => { load(); }, [load]);
 
-  // join/leave room + live messages
   useEffect(() => {
     if (!socket || !ticketId) return;
     socket.emit('join_ticket_room', ticketId);
@@ -76,7 +72,6 @@ function ChatPanel({ ticketId, ticketStatus }) {
   const send = async () => {
     if (!text.trim() || !currentUser?.id || ticketStatus === 'Completed') return;
     try {
-      // ✅ 3. แก้ไขการเรียก API
       await axios.post(`${API_BASE_URL}/api/tickets/${ticketId}/messages`, {
         sender_id: currentUser.id,
         message: text.trim(),
@@ -94,8 +89,6 @@ function ChatPanel({ ticketId, ticketStatus }) {
       <div className="px-4 py-2 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800">
         <h4 className="font-semibold text-slate-900 dark:text-white">แชทคุยกับช่าง</h4>
       </div>
-
-      {/* สูงตามหน้าจอมือถือจริง + เลื่อนได้แน่ๆ */}
       <div className="h-[45vh] md:h-72 overflow-y-auto p-3 space-y-2 bg-white dark:bg-slate-900">
         {loading ? (
           <div className="text-sm text-slate-500 dark:text-slate-400">กำลังโหลดแชท…</div>
@@ -126,8 +119,6 @@ function ChatPanel({ ticketId, ticketStatus }) {
         )}
         <div ref={bottomRef} />
       </div>
-
-      {/* กันคีย์บอร์ดบัง + ฟอนต์ใหญ่พอใน iOS */}
       <div className="p-3 pb-[max(env(safe-area-inset-bottom),12px)] bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-700 flex gap-2">
         <input
           value={text}
@@ -135,8 +126,7 @@ function ChatPanel({ ticketId, ticketStatus }) {
           onKeyDown={(e)=> { if (e.key==='Enter' && !e.shiftKey) { e.preventDefault(); send(); } }}
           disabled={disabled}
           placeholder={disabled ? 'ปิดงานแล้ว — ไม่สามารถส่งข้อความได้' : 'พิมพ์ข้อความ…'}
-          className={`flex-1 px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800
-                         text-slate-800 dark:text-slate-100 text-base md:text-sm ${disabled ? 'opacity-60 cursor-not-allowed' : ''}`}
+          className={`flex-1 px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 text-base md:text-sm ${disabled ? 'opacity-60 cursor-not-allowed' : ''}`}
         />
         <button
           onClick={send}
@@ -163,13 +153,9 @@ function Drawer({ open, onClose, ticket }) {
 
   return (
     <div className="fixed inset-0 z-50">
-      <div onClick={onClose} className="absolute inset-0 bg-black/40 opacity-100" />
+      <div onClick={onClose} className="absolute inset-0 bg-black/40" />
       <div
-        /* Drawer เต็มสูงแบบคอลัมน์: เนื้อหาเลื่อนเอง Chat ไม่ถูกดัน */
-        className="absolute right-0 top-0 h-full w-full sm:w-[520px] bg-white dark:bg-slate-900
-                         border-l border-slate-200 dark:border-slate-700 shadow-2xl
-                         transform translate-x-0 transition-transform duration-300
-                         flex flex-col"
+        className="absolute right-0 top-0 h-full w-full sm:w-[520px] bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-700 shadow-2xl flex flex-col"
         onClick={(e)=>e.stopPropagation()}
       >
         <div className="p-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
@@ -183,7 +169,6 @@ function Drawer({ open, onClose, ticket }) {
             <X className="h-5 w-5 text-slate-500 dark:text-slate-300" />
           </button>
         </div>
-
         <div className="flex-1 overflow-y-auto p-5 space-y-4">
           {!ticket ? (
             <p className="text-slate-500 dark:text-slate-300">เลือกงานจากรายการเพื่อดูรายละเอียด</p>
@@ -195,17 +180,14 @@ function Drawer({ open, onClose, ticket }) {
                   สร้างเมื่อ {new Date(ticket.created_at).toLocaleString('th-TH')}
                 </span>
               </div>
-
               <div>
                 <p className="text-xs text-slate-500 dark:text-slate-400">หัวข้อ</p>
                 <h4 className="text-lg font-semibold text-slate-900 dark:text-white">{ticket.title}</h4>
               </div>
-
               <div>
                 <p className="text-xs text-slate-500 dark:text-slate-400">รายละเอียด</p>
                 <p className="text-slate-800 dark:text-slate-100 whitespace-pre-wrap">{ticket.description || '-'}</p>
               </div>
-
               {(ticket.building || ticket.floor || ticket.room) && (
                 <div>
                   <p className="text-xs text-slate-500 dark:text-slate-400">สถานที่</p>
@@ -214,11 +196,9 @@ function Drawer({ open, onClose, ticket }) {
                   </p>
                 </div>
               )}
-
               {ticket.image_url && (
                 <div>
                   <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">รูปภาพที่แนบ</p>
-                  {/* ✅ 4. แก้ไข URL ของรูปภาพ */}
                   <img
                     src={`${API_BASE_URL}${ticket.image_url}`}
                     alt="แนบ"
@@ -226,8 +206,6 @@ function Drawer({ open, onClose, ticket }) {
                   />
                 </div>
               )}
-
-              {/* แชทคุยกับช่าง */}
               <ChatPanel ticketId={ticket.id} ticketStatus={ticket.status} />
             </>
           )}
@@ -249,7 +227,7 @@ function NewTicketModal({ open, onClose, onSuccess }) {
 
   return (
     <div className="fixed inset-0 z-50">
-      <div onClick={onClose} className="absolute inset-0 bg-black/40 opacity-100" />
+      <div onClick={onClose} className="absolute inset-0 bg-black/40" />
       <div
         className="absolute left-1/2 top-1/2 w-[95%] max-w-3xl -translate-x-1/2 -translate-y-1/2 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700"
         onClick={(e)=>e.stopPropagation()}
@@ -311,14 +289,13 @@ function LeftRail({ q, setQ, selectedStatus, setSelectedStatus, counts, onRefres
           </div>
         </div>
       </div>
-
       <div className="rounded-2xl border border-slate-200/70 dark:border-slate-700/70 bg-white/70 dark:bg-slate-800/70 p-4">
         <h4 className="font-semibold text-slate-900 dark:text-white">สรุปภาพรวม</h4>
         <div className="grid grid-cols-2 gap-3 mt-3">
           <SummaryCard icon={AlertTriangle} label="ทั้งหมด" value={counts.total} tone="indigo"/>
           <SummaryCard icon={Clock3} label="กำลังดำเนินการ" value={counts.open} tone="amber"/>
           <SummaryCard icon={CheckCircle2} label="เสร็จสิ้น" value={counts.completed} tone="green"/>
-          <SummaryCard icon="dummy" label="รอตรวจรับ" value={counts.submitted} tone="slate"/>
+          <SummaryCard icon={PlusCircle} label="รอตรวจรับ" value={counts.submitted} tone="slate"/>
         </div>
       </div>
     </aside>
@@ -332,11 +309,10 @@ function SummaryCard({ icon:Icon, label, value, tone }) {
     green:'from-emerald-500 to-teal-600',
     slate:'from-slate-600 to-slate-800',
   }[tone];
-  const IconCmp = Icon === 'dummy' ? PlusCircle : Icon;
   return (
     <div className="rounded-xl overflow-hidden border border-slate-200/70 dark:border-slate-700/70">
       <div className={`p-3 text-white bg-gradient-to-r ${t}`}>
-        <IconCmp className="h-4 w-4 opacity-90" />
+        <Icon className="h-4 w-4 opacity-90" />
         <p className="mt-1 text-2xl font-extrabold leading-none">{value}</p>
         <p className="text-xs opacity-90">{label}</p>
       </div>
@@ -367,7 +343,6 @@ function TicketCard({ t, onOpen }) {
             <span>แจ้งเมื่อ {new Date(t.created_at).toLocaleString('th-TH')}</span>
           </div>
         </div>
-
         <button
           onClick={() => onOpen(t)}
           className="self-start px-2 py-1 text-xs rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600"
@@ -380,7 +355,8 @@ function TicketCard({ t, onOpen }) {
 }
 
 /* ---------------- Right rail ---------------- */
-function RightRail({ total, last8, onOpen, onCreate }) {
+// ✅ 1. แก้ไขฟังก์ชัน RightRail ให้รับ prop `onAskAi` เพิ่ม
+function RightRail({ total, last8, onOpen, onCreate, onAskAi }) {
   return (
     <aside className="hidden xl:flex xl:flex-col gap-4 w-[320px] shrink-0">
       <div className="rounded-2xl border border-slate-200/70 dark:border-slate-700/70 bg-white/70 dark:bg-slate-800/70 p-4">
@@ -389,9 +365,15 @@ function RightRail({ total, last8, onOpen, onCreate }) {
           <button onClick={onCreate} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700">
             <PlusCircle size={18}/> แจ้งซ่อมใหม่
           </button>
+          {/* ✅ 2. เปลี่ยนจาก <a> เป็น <button> และเรียกใช้ onAskAi */}
+          <button 
+            onClick={onAskAi} 
+            className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-900 text-white hover:bg-slate-700 dark:bg-slate-700 dark:hover:bg-slate-600"
+          >
+            <MessageSquareText size={18}/> ถาม AI ก่อนแจ้งซ่อม
+          </button>
         </div>
       </div>
-
       <div className="rounded-2xl border border-slate-200/70 dark:border-slate-700/70 bg-white/70 dark:bg-slate-800/70 p-4">
         <h4 className="font-semibold text-slate-900 dark:text-white">งานล่าสุด</h4>
         <ol className="mt-3 space-y-3">
@@ -413,7 +395,6 @@ function RightRail({ total, last8, onOpen, onCreate }) {
           ))}
         </ol>
       </div>
-
       <div className="rounded-2xl border border-slate-200/70 dark:border-slate-700/70 bg-white/70 dark:bg-slate-800/70 p-4">
         <h4 className="font-semibold text-slate-900 dark:text-white">ทิปส์ก่อนแจ้งซ่อม</h4>
         <ul className="mt-2 list-disc ps-5 text-sm text-slate-600 dark:text-slate-300 space-y-1">
@@ -436,15 +417,16 @@ export default function UserDashboard() {
   const [status, setStatus] = useState('All');
   const [loading, setLoading] = useState(true);
 
-  // Drawer & Modal states
   const [openedTicket, setOpenedTicket] = useState(null);
   const [openNew, setOpenNew] = useState(false);
+  
+  // ✅ 3. เพิ่ม State เพื่อควบคุมการเปิด-ปิดของ Chatbot
+  const [isChatbotOpen, setChatbotOpen] = useState(false);
 
   const fetchTickets = useCallback(async () => {
     if (!currentUser?.id) return;
     setLoading(true);
     try {
-      // ✅ 5. แก้ไขการเรียก API
       const r = await axios.get(`${API_BASE_URL}/api/tickets`, { params: { userId: currentUser.id } });
       setTickets(Array.isArray(r.data) ? r.data : []);
     } catch (e) {
@@ -454,7 +436,12 @@ export default function UserDashboard() {
     }
   }, [currentUser]);
 
-  useEffect(() => { fetchTickets(); }, [fetchTickets]);
+  // ✅ แก้ไข: เพิ่มการตรวจสอบ currentUser ก่อน fetch
+  useEffect(() => {
+    if (currentUser?.id) {
+      fetchTickets();
+    }
+  }, [currentUser, fetchTickets]);
 
   useEffect(() => {
     if (!socket) return;
@@ -492,7 +479,6 @@ export default function UserDashboard() {
 
   return (
     <div className="min-h-[70vh] grid grid-cols-1 lg:grid-cols-[18rem_1fr] xl:grid-cols-[18rem_1fr_20rem] gap-6">
-      {/* Left rail */}
       <LeftRail
         q={q}
         setQ={setQ}
@@ -509,8 +495,6 @@ export default function UserDashboard() {
         }}
         onRefresh={fetchTickets}
       />
-
-      {/* Center feed */}
       <section className="space-y-4">
         <header className="rounded-2xl border border-slate-200/70 dark:border-slate-700/70 bg-white/70 dark:bg-slate-800/70 px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -526,7 +510,6 @@ export default function UserDashboard() {
             </button>
           </div>
         </header>
-
         {loading ? (
           <div className="space-y-3">
             {[...Array(5)].map((_,i)=><div key={i} className="h-24 rounded-2xl bg-slate-100 dark:bg-slate-700 animate-pulse" />)}
@@ -549,28 +532,26 @@ export default function UserDashboard() {
           </div>
         )}
       </section>
-
-      {/* Right rail */}
       <RightRail
         total={counts.total}
         last8={[...tickets].sort((a,b)=>new Date(b.created_at)-new Date(a.created_at)).slice(0,8)}
         onOpen={setOpenedTicket}
         onCreate={()=>setOpenNew(true)}
+        onAskAi={() => setChatbotOpen(true)} // ✅ 4. ส่งฟังก์ชันเปิดแชทไปให้ RightRail
       />
-
-      {/* Drawer รายละเอียด + แชท */}
       <Drawer open={!!openedTicket} ticket={openedTicket} onClose={() => setOpenedTicket(null)} />
-
-      {/* Modal แจ้งซ่อมใหม่ (ใช้ TicketForm เดิม) */}
       <NewTicketModal
         open={openNew}
         onClose={() => setOpenNew(false)}
         onSuccess={() => { setOpenNew(false); fetchTickets(); }}
       />
-
-      {/* Floating AI widget */}
       <div id="ask-ai" />
-      <ChatBotWidget onCreateTicket={() => setOpenNew(true)} />
+      {/* ✅ 5. ส่ง State และฟังก์ชันควบคุมไปให้ ChatBotWidget */}
+      <ChatBotWidget 
+        onCreateTicket={() => setOpenNew(true)} 
+        isOpen={isChatbotOpen}
+        setIsOpen={setChatbotOpen}
+      />
     </div>
   );
 }
