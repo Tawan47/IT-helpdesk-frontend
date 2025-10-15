@@ -389,9 +389,6 @@ function RightRail({ total, last8, onOpen, onCreate }) {
           <button onClick={onCreate} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700">
             <PlusCircle size={18}/> แจ้งซ่อมใหม่
           </button>
-          <a href="#ask-ai" className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-900 text-white hover:bg-slate-700 dark:bg-slate-700 dark:hover:bg-slate-600">
-            <MessageSquareText size={18}/> ถาม AI ก่อนแจ้งซ่อม
-          </a>
         </div>
       </div>
 

@@ -8,11 +8,14 @@ import UserDashboard from './pages/UserDashboard';
 import TechnicianDashboard from './pages/TechnicianDashboard';
 import AdminDashboard from './pages/AdminDashboard';
 import AiAssistant from './pages/AiAssistant';
+import EditProfilePage from './pages/EditProfilePage'; // 👈 1. import หน้าโปรไฟล์เข้ามา
+import NewTicketPage from './pages/NewTicketPage';
 
 function ProtectedLayout() {
   const { currentUser } = useAuth();
   if (!currentUser) return <Navigate to="/login" replace />;
-  return <MainLayout><Outlet /></MainLayout>;
+  // MainLayout ถูกย้ายไปครอบ Routes ใน App โดยตรงแล้ว
+  return <Outlet />;
 }
 
 function DashboardGate() {
@@ -23,7 +26,6 @@ function DashboardGate() {
     case 'Technician':
       return <TechnicianDashboard />;
     case 'Admin':
-      // ส่งแอดมินไปชุดเส้นทางใหม่ /admin/:section
       return <Navigate to="/admin/dashboard" replace />;
     default:
       return <Navigate to="/login" replace />;
@@ -39,10 +41,12 @@ export default function App() {
         {/* auth */}
         <Route path="/login" element={currentUser ? <Navigate to="/" replace /> : <AuthPage />} />
 
-        {/* protected area */}
-        <Route element={<ProtectedLayout />}>
+        {/* protected area with MainLayout */}
+        <Route element={currentUser ? <MainLayout /> : <Navigate to="/login" replace />}>
+          
           {/* default -> ไปแดชบอร์ดตามบทบาทผ่าน DashboardGate */}
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/dashboard" element={<DashboardGate />} />
 
           {/* เส้นทางของ Admin แบบมีพารามิเตอร์ */}
           <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
@@ -51,9 +55,20 @@ export default function App() {
           {/* หน้า AI ผู้ช่วยความรู้ก่อนแจ้งช่าง */}
           <Route path="/ai" element={<AiAssistant />} />
 
-          {/* รวมเส้นทางของผู้ใช้ทั่วไป/ช่าง (เช่น /dashboard, /tickets ฯลฯ) */}
-          <Route path="/*" element={<DashboardGate />} />
+          {/* ==================== ส่วนที่เพิ่มเข้ามา ==================== */}
+          {/* ✅ 2. เพิ่ม Route สำหรับหน้าโปรไฟล์โดยเฉพาะ */}
+          <Route path="/profile" element={<EditProfilePage />} />
+          {/* หากมีหน้าอื่น เช่น /tickets/new ก็ให้เพิ่มตรงนี้ */}
+          {/* <Route path="/tickets/new" element={<NewTicketPage />} /> */}
+          {/* ========================================================== */}
+
+          <Route path="/tickets/new" element={<NewTicketPage />} />
+
         </Route>
+
+        {/* Route สำหรับหน้าที่ไม่เจอ สามารถเพิ่ม 404 Page ได้ */}
+        <Route path="*" element={<Navigate to="/" />} />
+
       </Routes>
     </Router>
   );
