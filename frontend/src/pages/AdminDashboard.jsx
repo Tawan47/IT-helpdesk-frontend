@@ -401,8 +401,8 @@ export default function AdminDashboard() {
       // ✅ 4. แก้ไขการเรียก API
       const [t, u, inv] = await Promise.all([
         axios.get(`${API_BASE_URL}/api/tickets`),
-        axios.get(`${API_BASE_URL}/api/users`,{
-          params: { userId: currentUser.id},
+       axios.get(`${API_BASE_URL}/api/users`, {
+          params: { userId: currentUser.id },   // ✅ ส่ง userId ของ Admin
         }),
         axios.get(`${API_BASE_URL}/api/inventory`),
       ]);
@@ -451,12 +451,12 @@ export default function AdminDashboard() {
     // ✅ 6. แก้ไขการเรียก API
     await axios.put(`${API_BASE_URL}/api/tickets/${ticketId}`, { technician_id: technicianId, status: 'Assigned' });
   };
-  const changeRole = async (userId, role) => {
-    // ✅ 7. แก้ไขการเรียก API
-    await axios.put(`${API_BASE_URL}/api/users/${userId}/role`, { role },
-      {
-        params: {userId: currentUser.id},
-      }
+   const changeRole = async (userId, role) => {
+    if (!currentUser) return;
+    await axios.put(
+      `${API_BASE_URL}/api/users/${userId}/role`,
+      { role },
+      { params: { userId: currentUser.id } }   // ✅ ส่ง userId ของ Admin
     );
   };
 
