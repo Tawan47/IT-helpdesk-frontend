@@ -8,6 +8,7 @@
 // - /api/tickets robust + debug log, CORS ระบุ origin + credentials
 // - ✅ ใหม่: ติดตาม "ช่างออนไลน์" แบบ realtime + API ให้แอดมินดูได้
 // - ✅ ใหม่: AI Chat Bot ที่ /api/ai/assist (OpenAI + FAQ fallback)
+// - ✅ ใช้ bcryptjs สำหรับ hash/ตรวจสอบรหัสผ่าน (สมัคร + ล็อกอิน)
 // =================================================================
 require('dotenv').config();
 
@@ -25,6 +26,7 @@ const multer = require('multer');
 const path = require('path');
 const nodemailer = require('nodemailer');
 const axios = require('axios');
+const bcrypt = require('bcryptjs'); // 🔐 ใช้ bcryptjs
 
 const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN || 'http://localhost:5173';
 const app = express();
@@ -35,6 +37,8 @@ const io = new Server(server, {
 });
 
 // --- Middlewares & Setup ---
+// NOTE: Objection.js doesn't work well with express.bodyParser.
+// See https://github.com/Vincit/objection.js/issues/268
 app.use(cors({ origin: FRONTEND_ORIGIN, credentials: true }));
 app.use(express.json());
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
@@ -276,29 +280,72 @@ app.post('/api/ai/assist', async (req, res) => {
 });
 
 // --- Auth ---
+// สมัครสมาชิก: hash password ก่อนเก็บ + ตั้ง accepting_jobs = 1
 app.post('/api/register', async (req, res) => {
   try {
     const { name, email, password } = req.body;
-    if (!name || !email || !password) return res.status(400).json({ error: 'กรุณากรอกข้อมูลให้ครบถ้วน' });
-    const [{ id }] = await knex('users')
-      .insert({ name, email, password, role: 'User' })
-      .returning('id');
+    if (!name || !email || !password) {
+      return res.status(400).json({ error: 'กรุณากรอกข้อมูลให้ครบถ้วน' });
+    }
+
+    // 🔐 hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const [user] = await knex('users')
+      .insert({
+        name,
+        email,
+        password: hashedPassword,
+        role: 'User',
+        accepting_jobs: 1,
+      })
+      .returning(['id', 'name', 'email', 'role', 'accepting_jobs']);
+
     io.emit('user_updated');
-    res.status(201).json({ id, name, email, role: 'User' });
+    res.status(201).json({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      accepting_jobs: user.accepting_jobs,
+    });
   } catch (e) {
-    if (e.message.includes('UNIQUE constraint failed: users.email') || e.message.includes('duplicate key value violates unique constraint')) return res.status(409).json({ error: 'อีเมลนี้มีผู้ใช้งานแล้ว' });
-    console.error('register', e); res.status(500).json({ error: 'ไม่สามารถสมัครสมาชิกได้' });
+    if (
+      e.message.includes('UNIQUE constraint failed: users.email') ||
+      e.message.includes('duplicate key value violates unique constraint')
+    ) {
+      return res.status(409).json({ error: 'อีเมลนี้มีผู้ใช้งานแล้ว' });
+    }
+    console.error('register', e);
+    res.status(500).json({ error: 'ไม่สามารถสมัครสมาชิกได้' });
   }
 });
+
+// ล็อกอิน: ใช้ bcrypt.compare ตรวจรหัสผ่าน
 app.post('/api/login', async (req, res) => {
   try {
     const { email, password } = req.body;
     const u = await knex('users').where({ email }).first();
-    if (u && u.password === password) {
-      return res.json({ id: u.id, name: u.name, email: u.email, role: u.role, accepting_jobs: u.accepting_jobs ?? 1 });
+    if (!u) {
+      return res.status(401).json({ error: 'อีเมลหรือรหัสผ่านไม่ถูกต้อง' });
     }
-    res.status(401).json({ error: 'อีเมลหรือรหัสผ่านไม่ถูกต้อง' });
-  } catch (e) { console.error('login', e); res.status(500).json({ error: 'ไม่สามารถเข้าสู่ระบบได้' }); }
+
+    const isMatch = await bcrypt.compare(password, u.password);
+    if (!isMatch) {
+      return res.status(401).json({ error: 'อีเมลหรือรหัสผ่านไม่ถูกต้อง' });
+    }
+
+    return res.json({
+      id: u.id,
+      name: u.name,
+      email: u.email,
+      role: u.role,
+      accepting_jobs: u.accepting_jobs ?? 1,
+    });
+  } catch (e) {
+    console.error('login', e);
+    res.status(500).json({ error: 'ไม่สามารถเข้าสู่ระบบได้' });
+  }
 });
 
 // --- Users ---
