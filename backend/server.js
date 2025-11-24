@@ -9,11 +9,12 @@
 // - ✅ ใหม่: ติดตาม "ช่างออนไลน์" แบบ realtime + API ให้แอดมินดูได้
 // - ✅ ใหม่: AI Chat Bot ที่ /api/ai/assist (OpenAI + FAQ fallback)
 // - ✅ ใช้ bcryptjs สำหรับ hash/ตรวจสอบรหัสผ่าน (สมัคร + ล็อกอิน)
+// - ✅ เพิ่มตรวจสิทธิ์ Admin บน /api/users*, กัน user ธรรมดาเรียกผ่าน F12
 // =================================================================
 require('dotenv').config();
 
 console.log('--- ALL ENVIRONMENT VARIABLES SEEN BY SERVER ---');
-console.log(process.env); // <--- เพิ่มบรรทัดนี้เพื่อพิมพ์ทุกอย่างออกมา
+console.log(process.env); // <--- debug env
 console.log('--- END OF VARIABLES ---');
 console.log(`SERVER IS ALLOWING ORIGIN: ${process.env.FRONTEND_ORIGIN || 'http://localhost:5173'}`);
 
@@ -37,8 +38,6 @@ const io = new Server(server, {
 });
 
 // --- Middlewares & Setup ---
-// NOTE: Objection.js doesn't work well with express.bodyParser.
-// See https://github.com/Vincit/objection.js/issues/268
 app.use(cors({ origin: FRONTEND_ORIGIN, credentials: true }));
 app.use(express.json());
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
@@ -139,6 +138,21 @@ async function createAndEmitNotification(userId, ticketId, message) {
   } catch (e) { console.error('notify error', e); }
 }
 
+// ✅ helper ตรวจว่า requester เป็น Admin หรือไม่ (ใช้กับ /api/users*)
+async function assertAdminFromQuery(req, res) {
+  const uid = Number(req.query.userId);
+  if (!uid) {
+    res.status(401).json({ error: 'Unauthorized: userId is required' });
+    return null;
+  }
+  const me = await knex('users').where({ id: uid }).first();
+  if (!me || me.role !== 'Admin') {
+    res.status(403).json({ error: 'Forbidden: เฉพาะผู้ดูแลระบบเท่านั้นที่ทำรายการนี้ได้' });
+    return null;
+  }
+  return me;
+}
+
 // Email optional (ไม่ตั้งค่า .env จะไม่ส่งและไม่ error)
 const EMAIL_ENABLED = !!(process.env.EMAIL_USER && process.env.EMAIL_PASS);
 const transporter = EMAIL_ENABLED ? nodemailer.createTransport({
@@ -168,8 +182,6 @@ async function sendLineNotification(token, message) {
 
 /* ==========================================================
    ✅ AI Chat Bot (OpenAI + FAQ fallback)
-   - endpoint: POST /api/ai/assist
-   - body: { userId?: number, message: string, history?: [{role, content}] }
    ========================================================== */
 let openai = null;
 try {
@@ -288,7 +300,6 @@ app.post('/api/register', async (req, res) => {
       return res.status(400).json({ error: 'กรุณากรอกข้อมูลให้ครบถ้วน' });
     }
 
-    // 🔐 hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const [user] = await knex('users')
@@ -349,32 +360,69 @@ app.post('/api/login', async (req, res) => {
 });
 
 // --- Users ---
-app.get('/api/users', async (_req, res) => {
-  try { res.json(await knex('users').select('id', 'name', 'email', 'role')); }
-  catch { res.status(500).json({ error: 'ไม่สามารถดึงข้อมูลผู้ใช้ได้' }); }
+// ✅ เฉพาะ Admin เท่านั้นที่เรียก /api/users ได้ (เช็กจาก ?userId=...)
+app.get('/api/users', async (req, res) => {
+  try {
+    const me = await assertAdminFromQuery(req, res);
+    if (!me) return; // res ถูกส่งไปแล้ว
+
+    const users = await knex('users').select('id', 'name', 'email', 'role');
+    res.json(users);
+  } catch (e) {
+    console.error('get users', e);
+    res.status(500).json({ error: 'ไม่สามารถดึงข้อมูลผู้ใช้ได้' });
+  }
 });
+
+// ✅ อัปเดตข้อมูลผู้ใช้ เฉพาะ Admin
 app.put('/api/users/:id', async (req, res) => {
   try {
-    const { id } = req.params; const { name, email } = req.body;
+    const me = await assertAdminFromQuery(req, res);
+    if (!me) return;
+
+    const { id } = req.params;
+    const { name, email } = req.body;
     if (!name || !email) return res.status(400).json({ error: 'กรุณากรอกชื่อและอีเมล' });
+
     const cnt = await knex('users').where({ id }).update({ name, email });
     if (!cnt) return res.status(404).json({ error: 'ไม่พบผู้ใช้งาน' });
+
     io.emit('user_updated');
     const user = await knex('users').select('id', 'name', 'email', 'role').where({ id }).first();
     res.json(user);
   } catch (e) {
-    if (e.message.includes('UNIQUE constraint failed: users.email') || e.message.includes('duplicate key value violates unique constraint')) return res.status(409).json({ error: 'อีเมลนี้มีผู้ใช้งานอื่นแล้ว' });
-    console.error('update user', e); res.status(500).json({ error: 'ไม่สามารถอัปเดตโปรไฟล์ได้' });
+    if (
+      e.message.includes('UNIQUE constraint failed: users.email') ||
+      e.message.includes('duplicate key value violates unique constraint')
+    ) {
+      return res.status(409).json({ error: 'อีเมลนี้มีผู้ใช้งานอื่นแล้ว' });
+    }
+    console.error('update user', e);
+    res.status(500).json({ error: 'ไม่สามารถอัปเดตโปรไฟล์ได้' });
   }
 });
+
+// ✅ เปลี่ยน role ผู้ใช้ เฉพาะ Admin
 app.put('/api/users/:id/role', async (req, res) => {
   try {
-    const { id } = req.params; const { role } = req.body;
-    if (!['User', 'Technician', 'Admin'].includes(role)) return res.status(400).json({ error: 'Invalid role specified.' });
+    const me = await assertAdminFromQuery(req, res);
+    if (!me) return;
+
+    const { id } = req.params;
+    const { role } = req.body;
+    if (!['User', 'Technician', 'Admin'].includes(role)) {
+      return res.status(400).json({ error: 'Invalid role specified.' });
+    }
+
     const cnt = await knex('users').where({ id }).update({ role });
     if (!cnt) return res.status(404).json({ error: 'User not found.' });
-    io.emit('user_updated'); res.json({ message: `User ${id} role updated to ${role}` });
-  } catch { res.status(500).json({ error: 'ไม่สามารถอัปเดต Role ได้' }); }
+
+    io.emit('user_updated');
+    res.json({ message: `User ${id} role updated to ${role}` });
+  } catch (e) {
+    console.error('update role', e);
+    res.status(500).json({ error: 'ไม่สามารถอัปเดต Role ได้' });
+  }
 });
 
 // --- ME endpoints (ใช้ userId จาก query) ---
@@ -389,6 +437,7 @@ app.get('/api/me', async (req, res) => {
     res.json(user);
   } catch (e) { console.error('GET /api/me', e); res.status(500).json({ message: 'Server error' }); }
 });
+
 app.put('/api/me', async (req, res) => {
   try {
     const uid = Number(req.query.userId);
@@ -404,6 +453,7 @@ app.put('/api/me', async (req, res) => {
     console.error('PUT /api/me', e); res.status(500).json({ message: 'ไม่สามารถอัปเดตโปรไฟล์ได้' });
   }
 });
+
 // เปิด/ปิดรับงานของช่าง
 app.put('/api/me/availability', async (req, res) => {
   try {
@@ -418,7 +468,7 @@ app.put('/api/me/availability', async (req, res) => {
       .where({ id: uid }).first();
 
     io.emit('technician_availability_changed', { userId: uid, accepting: !!val });
-    await broadcastOnlineTechnicians(); // เผื่อ UI แสดงเฉพาะช่างที่ "ออนไลน์ + รับงาน"
+    await broadcastOnlineTechnicians();
     res.json(updated);
   } catch (e) {
     console.error('PUT /api/me/availability', e);
@@ -461,7 +511,6 @@ app.get('/api/tickets', async (req, res) => {
 
     console.log('[GET /api/tickets] result count =', tickets.length);
 
-    // กัน JSON แตก
     tickets = tickets.map(t => {
       let logs = [];
       try { logs = t.logs ? JSON.parse(t.logs) : []; } catch { logs = []; }
@@ -474,6 +523,7 @@ app.get('/api/tickets', async (req, res) => {
     res.status(500).json({ error: e.message });
   }
 });
+
 app.put('/api/tickets/:id', async (req, res) => {
   try {
     const { id } = req.params; const update = req.body;
@@ -506,6 +556,7 @@ app.put('/api/tickets/:id', async (req, res) => {
     res.json(after);
   } catch (e) { console.error('update ticket', e); res.status(500).json({ error: 'ไม่สามารถอัปเดตใบแจ้งซ่อมได้' }); }
 });
+
 app.post('/api/tickets', upload.single('image'), async (req, res) => {
   try {
     const { title, description, building, floor, room, user_id } = req.body;
@@ -529,10 +580,12 @@ app.get('/api/notifications/:userId', async (req, res) => {
     res.json(n);
   } catch { res.status(500).json({ error: 'ไม่สามารถดึงข้อมูลการแจ้งเตือนได้' }); }
 });
+
 app.put('/api/notifications/read', async (req, res) => {
   try { await knex('notifications').where({ user_id: req.body.userId, is_read: false }).update({ is_read: true }); res.json({ message: 'All notifications marked as read.' }); }
   catch { res.status(500).json({ error: 'ไม่สามารถอัปเดตสถานะการแจ้งเตือนได้' }); }
 });
+
 app.get('/api/analytics/stats', async (_req, res) => {
   try {
     const totalTickets = await knex('tickets').count('id as count').first();
@@ -542,16 +595,19 @@ app.get('/api/analytics/stats', async (_req, res) => {
     res.json({ totalTickets: totalTickets.count, avgRating: avgRating.avg ? parseFloat(avgRating.avg).toFixed(2) : 'N/A', totalUsers: totalUsers.count, totalTechnicians: totalTechnicians.count });
   } catch (e) { console.error('stats', e); res.status(500).json({ error: 'ไม่สามารถดึงข้อมูลสถิติได้' }); }
 });
+
 app.get('/api/analytics/common-problems', async (_req, res) => {
   try {
     const common = await knex('tickets').select('title').count('id as count').groupBy('title').orderBy('count', 'desc').limit(5);
     res.json(common);
   } catch (e) { console.error('common', e); res.status(500).json({ error: 'ไม่สามารถดึงข้อมูลปัญหาที่พบบ่อยได้' }); }
 });
+
 app.get('/api/inventory', async (_req, res) => {
   try { res.json(await knex('inventory').select('*').orderBy('created_at', 'desc')); }
   catch (e) { console.error('inventory', e); res.status(500).json({ error: 'ไม่สามารถดึงข้อมูลครุภัณฑ์ได้' }); }
 });
+
 app.post('/api/inventory', async (req, res) => {
   try {
     const { name, code, location, purchase_date, status } = req.body;
@@ -566,6 +622,7 @@ app.post('/api/inventory', async (req, res) => {
     console.error('inv create', e); res.status(500).json({ error: 'ไม่สามารถเพิ่มครุภัณฑ์ได้' });
   }
 });
+
 app.put('/api/inventory/:id', async (req, res) => {
   try {
     const { id } = req.params; const { name, code, location, purchase_date, status } = req.body;
@@ -579,6 +636,7 @@ app.put('/api/inventory/:id', async (req, res) => {
     console.error('inv update', e); res.status(500).json({ error: 'ไม่สามารถอัปเดตข้อมูลครุภัณฑ์ได้' });
   }
 });
+
 app.delete('/api/inventory/:id', async (req, res) => {
   try {
     const { id } = req.params; const cnt = await knex('inventory').where({ id }).del();
@@ -592,6 +650,7 @@ app.get('/api/tickets/:id/messages', async (req, res) => {
   try { res.json(await knex('chat_messages').where({ ticket_id: req.params.id }).orderBy('created_at', 'asc')); }
   catch (e) { console.error('get messages', e); res.status(500).json({ error: 'ไม่สามารถดึงข้อมูลแชทได้' }); }
 });
+
 app.post('/api/tickets/:id/messages', async (req, res) => {
   try {
     const { id: ticket_id } = req.params; const { sender_id, message } = req.body;
