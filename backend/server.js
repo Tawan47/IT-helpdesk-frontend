@@ -29,6 +29,8 @@ const nodemailer = require('nodemailer');
 const axios = require('axios');
 const bcrypt = require('bcryptjs'); // 🔐 ใช้ bcryptjs
 
+const { requireAuth, requireRole } = require("./authMiddleware")
+
 const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN || 'http://localhost:5173';
 const app = express();
 const server = http.createServer(app);
