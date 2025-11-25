@@ -8,7 +8,7 @@ import OnlineTechsCard from '../components/OnlineTechsCard';
 import {
   Search, Filter, Plus, Edit, Delete,
   AlertTriangle, UserCheck, Hourglass, CheckCircle,
-  LayoutDashboard, Ticket, Users, Box, BarChart3
+  LayoutDashboard, Ticket, Users as UsersIcon, Box, BarChart3, Wifi, User
 } from 'lucide-react';
 
 import {
@@ -17,8 +17,8 @@ import {
   TableBody, TableContainer, Tooltip, TextField
 } from '@mui/material';
 
-// ✅ 1. แก้ไขการกำหนดค่า Base URL ให้ถูกต้อง
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+// Fallback for environment variable in case import.meta is not available in some build targets
+const API_BASE_URL = (import.meta && import.meta.env && import.meta.env.VITE_API_URL) || 'http://localhost:5000';
 
 /* ============== small helpers ============== */
 function classNames(...a) { return a.filter(Boolean).join(' '); }
@@ -69,11 +69,61 @@ const StatCard = ({ title, value, icon: Icon, gradient }) => (
   </div>
 );
 
+// ✅ การ์ดนี้จะแสดงเฉพาะ User ที่ออนไลน์
+function OnlineUsersCard({ onlineData, loading }) {
+  const roleColors = {
+    Admin: 'bg-red-100 text-red-700',
+    Technician: 'bg-green-100 text-green-700',
+    User: 'bg-blue-100 text-blue-700',
+  };
+
+  return (
+    <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5 shadow-sm col-span-1 lg:col-span-2">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <span className="p-2 rounded-xl bg-blue-100 dark:bg-blue-900/40">
+            <Wifi className="h-6 w-6 text-blue-600 dark:text-blue-300" />
+          </span>
+          <div>
+            {/* ✅ เปลี่ยนหัวข้อ */}
+            <div className="text-sm text-slate-500 dark:text-slate-400">User ออนไลน์</div>
+            <div className="text-3xl font-extrabold text-slate-900 dark:text-white">
+              {loading ? '...' : onlineData.count}
+            </div>
+          </div>
+        </div>
+        {!loading && (
+          <div className="text-xs text-slate-500 dark:text-slate-400">
+            อัปเดตอัตโนมัติแบบเรียลไทม์
+          </div>
+        )}
+      </div>
+
+      {!loading && onlineData.users.length > 0 && (
+        <div className="mt-4 space-y-2 max-h-44 overflow-auto">
+          {onlineData.users.map(u => (
+            <div key={u.id} className="flex items-center justify-between text-sm bg-slate-50 dark:bg-slate-700/40 px-3 py-2 rounded-lg">
+              <div className="truncate flex items-center gap-2">
+                <User size={14} className="text-slate-500"/>
+                <span className="font-medium text-slate-700 dark:text-slate-100">{u.name}</span>
+                <span className="ml-2 text-slate-500 dark:text-slate-300 text-xs">#{u.id}</span>
+              </div>
+              <span className={`text-[11px] px-2 py-0.5 rounded-full ${roleColors[u.role] || 'bg-gray-100 text-gray-700'}`}>
+                {u.role}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ============== Tabs ============== */
 const tabsConf = [
   { key: 'dashboard', label: 'ภาพรวม', icon: LayoutDashboard },
   { key: 'tickets',   label: 'ใบแจ้งซ่อม', icon: Ticket },
-  { key: 'users',     label: 'ผู้ใช้งาน', icon: Users },
+  { key: 'users',     label: 'ผู้ใช้งาน', icon: UsersIcon },
   { key: 'inventory', label: 'ครุภัณฑ์', icon: Box },
   { key: 'analytics', label: 'รายงาน', icon: BarChart3 },
 ];
@@ -82,7 +132,7 @@ function Tabs({ value, onNavigate }) {
   return (
     <div className="sticky top-0 z-[1] border-b border-slate-200/70 dark:border-slate-700/60 bg-slate-50/60 dark:bg-slate-900/60 backdrop-blur">
       <div className="px-4 lg:px-6">
-        <div className="relative flex gap-2 py-3">
+        <div className="relative flex gap-2 py-3 overflow-x-auto">
           {tabsConf.map(t => {
             const Icon = t.icon;
             const active = value === t.key;
@@ -91,7 +141,7 @@ function Tabs({ value, onNavigate }) {
                 key={t.key}
                 onClick={() => onNavigate(t.key)}
                 className={classNames(
-                  'group relative px-4 py-2 rounded-xl text-sm font-semibold',
+                  'group relative px-4 py-2 rounded-xl text-sm font-semibold flex-shrink-0',
                   'transition-colors',
                   active
                     ? 'text-white bg-gradient-to-r from-indigo-600 to-violet-600 shadow-sm'
@@ -114,7 +164,7 @@ function Tabs({ value, onNavigate }) {
   );
 }
 
-/* -------------------- Tickets Panel (updated text color in dark mode) -------------------- */
+/* -------------------- Tickets Panel -------------------- */
 function TicketsPanel({ tickets, users, onAssign }) {
   const [q, setQ] = useState('');
   const [status, setStatus] = useState('All');
@@ -137,8 +187,7 @@ function TicketsPanel({ tickets, users, onAssign }) {
 
   return (
     <div className="space-y-4">
-      {/* Sticky filters */}
-      <div className="sticky top-[64px] z-[1] bg-slate-50/60 dark:bg-slate-900/60 backdrop-blur p-3 rounded-xl border border-slate-200/70 dark:border-slate-700/60">
+      <div className="sticky top-[76px] z-[1] bg-slate-50/60 dark:bg-slate-900/60 backdrop-blur p-3 rounded-xl border border-slate-200/70 dark:border-slate-700/60">
         <div className="flex flex-col sm:flex-row gap-3">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400"/>
@@ -167,10 +216,9 @@ function TicketsPanel({ tickets, users, onAssign }) {
       </div>
 
       {filtered.length === 0 ? (
-        <EmptyState title="ไม่มีใบแจ้งซ่อม" subtitle="ลองเปลี่ยนตัวกรองหรือเพิ่มงานใหม่" />
+        <EmptyState title="ไม่มีใบแจ้งซ่อม" subtitle="ลองเปลี่ยนตัวกรอง" />
       ) : (
         <div className="rounded-2xl border border-slate-200/70 dark:border-slate-700/60 overflow-hidden shadow-sm">
-          {/* ⬇️ ใส่สีตัวหนังสือระดับ container เพื่อให้ลูกหลานครอบคลุม */}
           <TableContainer className="bg-white/80 dark:bg-slate-800/80 backdrop-blur text-slate-800 dark:text-slate-100">
             <Table size="small" stickyHeader>
               <TableHead>
@@ -187,16 +235,10 @@ function TicketsPanel({ tickets, users, onAssign }) {
                     key={t.id}
                     className="odd:bg-slate-50/50 dark:odd:bg-slate-800/50 hover:bg-slate-100/70 dark:hover:bg-slate-700/60 transition-colors"
                   >
-                    <TableCell className="font-medium text-slate-800 dark:text-slate-100">
-                      {t.title}
-                    </TableCell>
-                    <TableCell className="text-slate-700 dark:text-slate-100">
-                      {getName(t.user_id)}
-                    </TableCell>
-                    <TableCell className="text-slate-700 dark:text-slate-100">
-                      <SoftBadge tone={statusTone(t.status)}>{t.status}</SoftBadge>
-                    </TableCell>
-                    <TableCell className="text-slate-700 dark:text-slate-100">
+                    <TableCell className="font-medium">{t.title}</TableCell>
+                    <TableCell>{getName(t.user_id)}</TableCell>
+                    <TableCell><SoftBadge tone={statusTone(t.status)}>{t.status}</SoftBadge></TableCell>
+                    <TableCell>
                       {t.technician_id ? (
                         <span>{getName(t.technician_id)}</span>
                       ) : (
@@ -223,13 +265,12 @@ function TicketsPanel({ tickets, users, onAssign }) {
   );
 }
 
-/* -------------------- Users Panel (dark text = white) -------------------- */
+/* -------------------- Users Panel -------------------- */
 function UsersPanel({ users, onRoleChange }) {
   if (!users.length) return <EmptyState title="ยังไม่มีผู้ใช้งาน" />;
 
   return (
     <div className="rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-sm">
-      {/* ⬇️ ครอบสีตัวอักษรที่ TableContainer */}
       <TableContainer className="bg-white/80 dark:bg-slate-800/80 text-slate-800 dark:text-slate-100">
         <Table size="small" stickyHeader>
           <TableHead>
@@ -242,9 +283,9 @@ function UsersPanel({ users, onRoleChange }) {
           <TableBody>
             {users.map(u => (
               <TableRow key={u.id} className="odd:bg-slate-50/50 dark:odd:bg-slate-800/50">
-                <TableCell className="text-slate-800 dark:!text-slate-100 font-medium">{u.name}</TableCell>
-                <TableCell className="text-slate-700 dark:!text-slate-100">{u.email}</TableCell>
-                <TableCell className="text-slate-700 dark:!text-slate-100">
+                <TableCell className="font-medium">{u.name}</TableCell>
+                <TableCell>{u.email}</TableCell>
+                <TableCell>
                   <select
                     value={u.role}
                     onChange={(e)=>onRoleChange(u.id, e.target.value)}
@@ -265,11 +306,15 @@ function UsersPanel({ users, onRoleChange }) {
 }
 
 
-/* -------------------- Inventory Panel (dark text = white) -------------------- */
+/* -------------------- Inventory Panel -------------------- */
 function InventoryPanel({ inventory, reload }) {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState({ name: '', code: '', location: '', purchase_date: '', status: 'In Use' });
+
+  // ✅ เพิ่ม Token ในส่วนจัดการ Inventory ด้วย
+  const getToken = () => localStorage.getItem('token');
+  const getAuthHeader = () => ({ headers: { Authorization: `Bearer ${getToken()}` } });
 
   const openDialog = (item=null) => {
     setEditing(item);
@@ -278,17 +323,19 @@ function InventoryPanel({ inventory, reload }) {
   };
 
   const save = async () => {
-    // ✅ 2. แก้ไขการเรียก API ทั้งหมดในฟังก์ชันนี้
-    if (editing) await axios.put(`${API_BASE_URL}/api/inventory/${editing.id}`, form);
-    else await axios.post(`${API_BASE_URL}/api/inventory`, form);
-    setOpen(false); reload();
+    try {
+      if (editing) await axios.put(`${API_BASE_URL}/api/inventory/${editing.id}`, form, getAuthHeader());
+      else await axios.post(`${API_BASE_URL}/api/inventory`, form, getAuthHeader());
+      setOpen(false); reload();
+    } catch (e) { alert(e.response?.data?.error || 'Save failed'); }
   };
 
   const remove = async (id) => {
-    if (confirm('ลบรายการนี้หรือไม่?')) {
-      // ✅ 3. แก้ไขการเรียก API
-      await axios.delete(`${API_BASE_URL}/api/inventory/${id}`);
-      reload();
+    if (window.confirm('ลบรายการนี้หรือไม่?')) {
+      try {
+        await axios.delete(`${API_BASE_URL}/api/inventory/${id}`, getAuthHeader());
+        reload();
+      } catch (e) { alert('Delete failed'); }
     }
   };
 
@@ -303,7 +350,6 @@ function InventoryPanel({ inventory, reload }) {
         <EmptyState title="ยังไม่มีครุภัณฑ์" />
       ) : (
         <div className="rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-sm">
-          {/* ⬇️ ครอบสีตัวอักษรที่ TableContainer */}
           <TableContainer className="bg-white/80 dark:bg-slate-800/80 text-slate-800 dark:text-slate-100">
             <Table size="small" stickyHeader>
               <TableHead>
@@ -318,11 +364,11 @@ function InventoryPanel({ inventory, reload }) {
               <TableBody>
                 {inventory.map(it => (
                   <TableRow key={it.id} className="odd:bg-slate-50/50 dark:odd:bg-slate-800/50">
-                    <TableCell className="text-slate-800 dark:!text-slate-100 font-medium">{it.name}</TableCell>
-                    <TableCell className="text-slate-700 dark:!text-slate-100">{it.code}</TableCell>
-                    <TableCell className="text-slate-700 dark:!text-slate-100">{it.location}</TableCell>
-                    <TableCell className="text-slate-700 dark:!text-slate-100">{it.status}</TableCell>
-                    <TableCell align="right" className="text-slate-700 dark:!text-slate-100">
+                    <TableCell className="font-medium">{it.name}</TableCell>
+                    <TableCell>{it.code}</TableCell>
+                    <TableCell>{it.location}</TableCell>
+                    <TableCell>{it.status}</TableCell>
+                    <TableCell align="right">
                       <Tooltip title="แก้ไข">
                         <IconButton size="small" onClick={()=>openDialog(it)}><Edit size={18}/></IconButton>
                       </Tooltip>
@@ -393,71 +439,80 @@ export default function AdminDashboard() {
   const [tickets, setTickets] = useState([]);
   const [users, setUsers] = useState([]);
   const [inventory, setInventory] = useState([]);
-  const [onlineTechs, setOnlineTechs] = useState(0);
   const [error, setError] = useState('');
+  
+  const [onlineUsers, setOnlineUsers] = useState({ count: 0, users: [] });
+
+  // ✅ Helper ในการดึง Token และสร้าง Header
+  const getAuthHeader = () => {
+    const token = localStorage.getItem('token');
+    return { headers: { Authorization: `Bearer ${token}` } };
+  };
 
   const fetchAll = useCallback(async () => {
     try {
-      // ✅ 4. แก้ไขการเรียก API
+      const config = getAuthHeader(); // ✅ สร้าง Header
+
       const [t, u, inv] = await Promise.all([
-        axios.get(`${API_BASE_URL}/api/tickets`),
-       axios.get(`${API_BASE_URL}/api/users`, {
-          params: { userId: currentUser.id },   // ✅ ส่ง userId ของ Admin
-        }),
-        axios.get(`${API_BASE_URL}/api/inventory`),
+        axios.get(`${API_BASE_URL}/api/tickets`, config),   // ✅ แนบ config
+        axios.get(`${API_BASE_URL}/api/users`, config),     // ✅ แนบ config (แก้ 401 ตรงนี้!)
+        axios.get(`${API_BASE_URL}/api/inventory`, config), // ✅ แนบ config
       ]);
       setTickets(Array.isArray(t.data) ? t.data : []);
       setUsers(Array.isArray(u.data) ? u.data : []);
       setInventory(Array.isArray(inv.data) ? inv.data : []);
-    } catch {
-      setError('ไม่สามารถดึงข้อมูลเริ่มต้นได้');
-    }
-
-    try {
-      // ✅ 5. แก้ไขการเรียก API
-      const r = await axios.get(`${API_BASE_URL}/api/technicians/online`);
-      if (typeof r.data?.count === 'number') {
-        setOnlineTechs(r.data.count);
+      setError('');
+    } catch (e) {
+      if (e.response && e.response.status === 401) {
+        setError('หมดเวลาใช้งาน กรุณาเข้าสู่ระบบใหม่');
+        // อาจจะ navigate('/login') ถ้าต้องการ
       } else {
-        const c = users.filter(x => x.role === 'Technician' && x.accepting_jobs === 1).length;
-        setOnlineTechs(c);
+        setError('ไม่สามารถดึงข้อมูลเริ่มต้นได้');
       }
-    } catch {
-      const c = users.filter(x => x.role === 'Technician' && x.accepting_jobs === 1).length;
-      setOnlineTechs(c);
     }
-  }, [users]);
+  }, []);
 
   useEffect(()=>{ fetchAll(); }, [fetchAll]);
 
   useEffect(() => {
     if (!socket) return;
+    
+    socket.emit('join_admin_room');
+    
+    const onlineUsersHandler = (payload) => setOnlineUsers(payload);
+    socket.on('all_users_online', onlineUsersHandler);
+
     const refresh = () => fetchAll();
     socket.on('new_ticket', refresh);
     socket.on('ticket_updated', refresh);
     socket.on('user_updated', refresh);
     socket.on('inventory_updated', refresh);
     socket.on('technician_availability_changed', refresh);
+    
     return () => {
       socket.off('new_ticket', refresh);
       socket.off('ticket_updated', refresh);
       socket.off('user_updated', refresh);
       socket.off('inventory_updated', refresh);
       socket.off('technician_availability_changed', refresh);
+      socket.off('all_users_online', onlineUsersHandler);
     };
   }, [socket, fetchAll]);
+  
+  // ✅ สร้างตัวแปรใหม่ที่กรองเฉพาะ User
+  const onlineNormalUsers = useMemo(() => {
+    const filteredUsers = onlineUsers.users.filter(u => u.role === 'User');
+    return {
+      count: filteredUsers.length,
+      users: filteredUsers,
+    };
+  }, [onlineUsers]);
 
   const assignTicket = async (ticketId, technicianId) => {
-    // ✅ 6. แก้ไขการเรียก API
-    await axios.put(`${API_BASE_URL}/api/tickets/${ticketId}`, { technician_id: technicianId, status: 'Assigned' });
+    await axios.put(`${API_BASE_URL}/api/tickets/${ticketId}`, { technician_id: technicianId, status: 'Assigned' }, getAuthHeader());
   };
-   const changeRole = async (userId, role) => {
-    if (!currentUser) return;
-    await axios.put(
-      `${API_BASE_URL}/api/users/${userId}/role`,
-      { role },
-      { params: { userId: currentUser.id } }   // ✅ ส่ง userId ของ Admin
-    );
+  const changeRole = async (userId, role) => {
+    await axios.put(`${API_BASE_URL}/api/users/${userId}/role`, { role }, getAuthHeader());
   };
 
   const stats = useMemo(() => ({
@@ -467,16 +522,13 @@ export default function AdminDashboard() {
     completed: tickets.filter(t => t.status === 'Completed').length,
   }), [tickets]);
 
-  const totalTechs = useMemo(() => users.filter(u => u.role === 'Technician').length, [users]);
-
   return (
     <div className="space-y-6">
-      {/* Hero Gradient */}
       <div className="mx-4 lg:mx-6 mt-2 rounded-3xl p-6 bg-gradient-to-r from-indigo-600 via-violet-600 to-fuchsia-600 text-white shadow-sm">
         <div className="flex items-center justify-between gap-3">
           <div>
             <h2 className="text-2xl font-extrabold tracking-tight">แผงควบคุมผู้ดูแลระบบ</h2>
-            <p className="opacity-90 mt-1 text-sm">สรุปภาพรวมงานซ่อม ทีมช่าง และทรัพยากรทั้งหมด — โทน UI สำหรับ Admin โดยเฉพาะ</p>
+            <p className="opacity-90 mt-1 text-sm">สรุปภาพรวมงานซ่อม ทีมช่าง และทรัพยากรทั้งหมด</p>
           </div>
           <SoftBadge tone="slate">Admin view</SoftBadge>
         </div>
@@ -501,7 +553,11 @@ export default function AdminDashboard() {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            <OnlineTechsCard online={onlineTechs} total={totalTechs} />
+            {/* ✅ ส่งข้อมูลที่กรองแล้วเข้าไป */}
+            <OnlineUsersCard onlineData={onlineNormalUsers} loading={!socket} />
+            <div className="lg:col-span-1">
+                <OnlineTechsCard />
+            </div>
           </div>
         </div>
       )}
@@ -535,4 +591,4 @@ export default function AdminDashboard() {
       )}
     </div>
   );
-}
+} 

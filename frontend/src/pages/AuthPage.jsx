@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../contexts/AuthContext.jsx'; // ✅ แก้ไข: ระบุนามสกุลไฟล์ให้ชัดเจน
+import { useNavigate } from 'react-router-dom';
 import { User, Mail, Lock, Briefcase } from 'lucide-react';
 
 export default function AuthPage() {
@@ -9,7 +10,9 @@ export default function AuthPage() {
   const [name, setName] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  
   const { login, register } = useAuth();
+  const navigate = useNavigate();
   const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
@@ -20,13 +23,26 @@ export default function AuthPage() {
     e.preventDefault();
     setError('');
     setIsLoading(true);
+    
     try {
       if (isLogin) {
-        await login(email, password);
+        // ✅ รับค่า user ที่ส่งกลับมาจาก AuthContext
+        const user = await login(email, password);
+        
+        // ✅ ตรวจสอบ Role แล้วพาไปหน้า Dashboard ที่ถูกต้อง
+        if (user.role === 'Admin') {
+          navigate('/admin/dashboard');
+        } else if (user.role === 'Technician') {
+          navigate('/technician/dashboard');
+        } else {
+          navigate('/user/dashboard');
+        }
+        
       } else {
         await register(name, email, password);
         setIsLogin(true);
         setError('สมัครสมาชิกสำเร็จแล้ว! กรุณาลงชื่อเข้าใช้');
+        // เคลียร์ฟอร์ม
         setName('');
         setEmail('');
         setPassword('');

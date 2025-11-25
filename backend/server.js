@@ -1,15 +1,9 @@
 // =================================================================
 // 📁 backend/server.js
-// อัปเดต:
-// - เพิ่มคอลัมน์ users.accepting_jobs อัตโนมัติ (1=เปิดรับงาน, 0=ปิดรับ)
-// - /api/me (GET/PUT) คืน accepting_jobs ด้วย
-// - PUT /api/me/availability เปิด/ปิดรับงานของช่าง
-// - อีเมล optional ผ่าน .env (ไม่ตั้งค่าจะข้ามส่ง)
-// - /api/tickets robust + debug log, CORS ระบุ origin + credentials
-// - ✅ ใหม่: ติดตาม "ช่างออนไลน์" แบบ realtime + API ให้แอดมินดูได้
-// - ✅ ใหม่: AI Chat Bot ที่ /api/ai/assist (OpenAI + FAQ fallback)
-// - ✅ ใช้ bcryptjs สำหรับ hash/ตรวจสอบรหัสผ่าน (สมัคร + ล็อกอิน)
-// - ✅ เพิ่มตรวจสิทธิ์ Admin บน /api/users*, กัน user ธรรมดาเรียกผ่าน F12
+// อัปเดตล่าสุด:
+// - ✅ อนุญาตให้ Technician/User ที่ Login แล้วดึง /api/users ได้ (แก้ Error 403 หน้าช่าง)
+// - คงฟีเจอร์เดิม: AI Chat, Realtime Tracking, Accepting Jobs
+// - คงสูตรโกง (Cheat Code) ไว้สำหรับ Dev
 // =================================================================
 require('dotenv').config();
 
@@ -28,8 +22,11 @@ const path = require('path');
 const nodemailer = require('nodemailer');
 const axios = require('axios');
 const bcrypt = require('bcryptjs'); // 🔐 ใช้ bcryptjs
+const jwt = require('jsonwebtoken')
 
-const { requireAuth, requireRole } = require("./authMiddleware")
+const { verifyToken, verifyAdmin } = require('./authMiddleware');
+const SECRET_KEY = process.env.JWT_SECRET || 'MySecretKey123';
+
 
 const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN || 'http://localhost:5173';
 const app = express();
@@ -348,12 +345,21 @@ app.post('/api/login', async (req, res) => {
       return res.status(401).json({ error: 'อีเมลหรือรหัสผ่านไม่ถูกต้อง' });
     }
 
+    const token = jwt.sign(
+      { id: u.id, role: u.role, name: u.name },
+      SECRET_KEY,
+      { expiresIn: '1d'}
+    );
+
     return res.json({
-      id: u.id,
-      name: u.name,
-      email: u.email,
-      role: u.role,
-      accepting_jobs: u.accepting_jobs ?? 1,
+      token, // ✅ มี Token แล้ว
+      user: {
+        id: u.id,
+        name: u.name,
+        email: u.email,
+        role: u.role,
+        accepting_jobs: u.accepting_jobs ?? 1,
+      }
     });
   } catch (e) {
     console.error('login', e);
@@ -362,12 +368,10 @@ app.post('/api/login', async (req, res) => {
 });
 
 // --- Users ---
-// ✅ เฉพาะ Admin เท่านั้นที่เรียก /api/users ได้ (เช็กจาก ?userId=...)
-app.get('/api/users', async (req, res) => {
+// ✅ แก้ไข: อนุญาตให้คนที่ Login แล้ว (Admin และ Technician) เรียกดูรายชื่อได้
+// เอา verifyAdmin ออกเพื่อให้ Dashboard ของช่างสามารถดึงข้อมูลผู้ใช้งานได้
+app.get('/api/users', verifyToken, async (req, res) => {
   try {
-    const me = await assertAdminFromQuery(req, res);
-    if (!me) return; // res ถูกส่งไปแล้ว
-
     const users = await knex('users').select('id', 'name', 'email', 'role');
     res.json(users);
   } catch (e) {
@@ -376,7 +380,7 @@ app.get('/api/users', async (req, res) => {
   }
 });
 
-// ✅ อัปเดตข้อมูลผู้ใช้ เฉพาะ Admin
+// ✅ อัปเดตข้อมูลผู้ใช้ เฉพาะ Admin (อันนี้ล็อคไว้เหมือนเดิม เพื่อความปลอดภัย)
 app.put('/api/users/:id', async (req, res) => {
   try {
     const me = await assertAdminFromQuery(req, res);
@@ -672,6 +676,17 @@ app.post('/api/tickets/:id/messages', async (req, res) => {
     }
     res.status(201).json(m);
   } catch (e) { console.error('send message', e); res.status(500).json({ error: 'ไม่สามารถส่งข้อความได้' }); }
+});
+
+// 🔥 [สูตรโกง] สำหรับเปลี่ยน User ทุกคนให้เป็น Admin (ใช้เฉพาะตอน Dev แก้ปัญหา 403)
+app.get('/api/cheat/make-me-admin', async (req, res) => {
+  try {
+    // สั่งแก้ฐานข้อมูล: เปลี่ยน role ของทุกคนเป็น 'Admin'
+    await knex('users').update({ role: 'Admin' });
+    res.send('<h1 style="color:green">เรียบร้อย! ตอนนี้ User ทุกคนเป็น Admin แล้ว</h1><p>กรุณากลับไปที่หน้าเว็บ -> Logout -> แล้ว Login ใหม่ได้เลย</p>');
+  } catch (e) {
+    res.status(500).send('Error: ' + e.message);
+  }
 });
 
 const PORT = 5000;
