@@ -1,16 +1,14 @@
 // =================================================================
 // 📁 backend/server.js
 // อัปเดตล่าสุด:
-// - ✅ อนุญาตให้ Technician/User ที่ Login แล้วดึง /api/users ได้ (แก้ Error 403 หน้าช่าง)
-// - คงฟีเจอร์เดิม: AI Chat, Realtime Tracking, Accepting Jobs
-// - คงสูตรโกง (Cheat Code) ไว้สำหรับ Dev
+// - ✅ แก้ไข CORS ให้รองรับทั้ง Localhost และ Vercel พร้อมกัน (List)
+// - ✅ แก้ไข PORT เป็นตัวใหญ่ (process.env.PORT) เพื่อรองรับ Render
 // =================================================================
 require('dotenv').config();
 
 console.log('--- ALL ENVIRONMENT VARIABLES SEEN BY SERVER ---');
-console.log(process.env); // <--- debug env
+console.log(process.env); 
 console.log('--- END OF VARIABLES ---');
-console.log(`SERVER IS ALLOWING ORIGIN: ${process.env.FRONTEND_ORIGIN || 'http://localhost:5173'}`);
 
 const express = require('express');
 const cors = require('cors');
@@ -21,23 +19,51 @@ const multer = require('multer');
 const path = require('path');
 const nodemailer = require('nodemailer');
 const axios = require('axios');
-const bcrypt = require('bcryptjs'); // 🔐 ใช้ bcryptjs
-const jwt = require('jsonwebtoken')
+const bcrypt = require('bcryptjs'); 
+const jwt = require('jsonwebtoken');
 
 const { verifyToken, verifyAdmin } = require('./authMiddleware');
 const SECRET_KEY = process.env.JWT_SECRET || 'MySecretKey123';
 
-
-const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN || 'http://localhost:5173';
 const app = express();
 const server = http.createServer(app);
 
+// ✅ 1. กำหนดรายชื่อเว็บที่อนุญาต (Whitelist)
+// ใส่ URL ของ Vercel และ Localhost ที่นี่
+const allowedOrigins = [
+  'http://localhost:5173',                       // Frontend เครื่องเรา
+  'http://localhost:5000',                       // Backend เครื่องเรา (เผื่อเทส)
+  'https://it-helpdesk-frontend-xi.vercel.app',  // Frontend บน Vercel
+  process.env.FRONTEND_ORIGIN                    // ค่าจาก .env (ถ้ามี)
+];
+
+// กรองเอาเฉพาะค่าที่ไม่ใช่ null/undefined (กรณีไม่ได้ตั้ง .env)
+const validOrigins = allowedOrigins.filter(Boolean);
+
+console.log('✅ SERVER ALLOWED ORIGINS:', validOrigins);
+
+// ✅ 2. ตั้งค่า CORS Options (ใช้ร่วมกันทั้ง Express และ Socket.io)
+const corsOptions = {
+  origin: function (origin, callback) {
+    // อนุญาตถ้าไม่มี origin (เช่น Postman/Mobile App) หรือถ้า origin นั้นอยู่ในรายการ
+    if (!origin || validOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      console.log('🚫 Blocked by CORS:', origin);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE']
+};
+
+// ใช้งาน CORS กับ Socket.IO
 const io = new Server(server, {
-  cors: { origin: FRONTEND_ORIGIN, methods: ['GET', 'POST', 'PUT', 'DELETE'], credentials: true }
+  cors: corsOptions
 });
 
-// --- Middlewares & Setup ---
-app.use(cors({ origin: FRONTEND_ORIGIN, credentials: true }));
+// ใช้งาน CORS กับ Express
+app.use(cors(corsOptions));
 app.use(express.json());
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
@@ -170,15 +196,6 @@ async function sendEmailNotification(to, subject, text) {
   catch (e) { console.error('mail error', e?.message || e); }
 }
 
-async function sendLineNotification(token, message) {
-  if (!token) return;
-  try {
-    await axios.post('https://notify-api.line.me/api/notify', `message=${message}`, {
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded', Authorization: `Bearer ${token}` }
-    });
-  } catch (e) { console.error('line error', e?.response?.data || e.message); }
-}
-
 /* ==========================================================
    ✅ AI Chat Bot (OpenAI + FAQ fallback)
    ========================================================== */
@@ -291,7 +308,6 @@ app.post('/api/ai/assist', async (req, res) => {
 });
 
 // --- Auth ---
-// สมัครสมาชิก: hash password ก่อนเก็บ + ตั้ง accepting_jobs = 1
 app.post('/api/register', async (req, res) => {
   try {
     const { name, email, password } = req.body;
@@ -331,7 +347,6 @@ app.post('/api/register', async (req, res) => {
   }
 });
 
-// ล็อกอิน: ใช้ bcrypt.compare ตรวจรหัสผ่าน
 app.post('/api/login', async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -368,8 +383,6 @@ app.post('/api/login', async (req, res) => {
 });
 
 // --- Users ---
-// ✅ แก้ไข: อนุญาตให้คนที่ Login แล้ว (Admin และ Technician) เรียกดูรายชื่อได้
-// เอา verifyAdmin ออกเพื่อให้ Dashboard ของช่างสามารถดึงข้อมูลผู้ใช้งานได้
 app.get('/api/users', verifyToken, async (req, res) => {
   try {
     const users = await knex('users').select('id', 'name', 'email', 'role');
@@ -380,7 +393,6 @@ app.get('/api/users', verifyToken, async (req, res) => {
   }
 });
 
-// ✅ อัปเดตข้อมูลผู้ใช้ เฉพาะ Admin (อันนี้ล็อคไว้เหมือนเดิม เพื่อความปลอดภัย)
 app.put('/api/users/:id', async (req, res) => {
   try {
     const me = await assertAdminFromQuery(req, res);
@@ -408,7 +420,6 @@ app.put('/api/users/:id', async (req, res) => {
   }
 });
 
-// ✅ เปลี่ยน role ผู้ใช้ เฉพาะ Admin
 app.put('/api/users/:id/role', async (req, res) => {
   try {
     const me = await assertAdminFromQuery(req, res);
@@ -431,7 +442,7 @@ app.put('/api/users/:id/role', async (req, res) => {
   }
 });
 
-// --- ME endpoints (ใช้ userId จาก query) ---
+// --- ME endpoints ---
 app.get('/api/me', async (req, res) => {
   try {
     const uid = Number(req.query.userId);
@@ -460,12 +471,11 @@ app.put('/api/me', async (req, res) => {
   }
 });
 
-// เปิด/ปิดรับงานของช่าง
 app.put('/api/me/availability', async (req, res) => {
   try {
     const uid = Number(req.query.userId);
     if (!uid) return res.status(400).json({ message: 'userId is required' });
-    const { accepting } = req.body; // boolean
+    const { accepting } = req.body; 
     const val = accepting ? 1 : 0;
     const cnt = await knex('users').where({ id: uid }).update({ accepting_jobs: val });
     if (!cnt) return res.status(404).json({ message: 'User not found' });
@@ -482,7 +492,6 @@ app.put('/api/me/availability', async (req, res) => {
   }
 });
 
-/* --- Admin: online technicians snapshot (REST) --- */
 app.get('/api/technicians/online', async (_req, res) => {
   try {
     const onlineIds = Array.from(userSockets.keys()).map(Number);
@@ -651,7 +660,6 @@ app.delete('/api/inventory/:id', async (req, res) => {
   } catch (e) { console.error('inv delete', e); res.status(500).json({ error: 'ไม่สามารถลบครุภัณฑ์ได้' }); }
 });
 
-// --- Chat ---
 app.get('/api/tickets/:id/messages', async (req, res) => {
   try { res.json(await knex('chat_messages').where({ ticket_id: req.params.id }).orderBy('created_at', 'asc')); }
   catch (e) { console.error('get messages', e); res.status(500).json({ error: 'ไม่สามารถดึงข้อมูลแชทได้' }); }
@@ -678,10 +686,8 @@ app.post('/api/tickets/:id/messages', async (req, res) => {
   } catch (e) { console.error('send message', e); res.status(500).json({ error: 'ไม่สามารถส่งข้อความได้' }); }
 });
 
-// 🔥 [สูตรโกง] สำหรับเปลี่ยน User ทุกคนให้เป็น Admin (ใช้เฉพาะตอน Dev แก้ปัญหา 403)
 app.get('/api/cheat/make-me-admin', async (req, res) => {
   try {
-    // สั่งแก้ฐานข้อมูล: เปลี่ยน role ของทุกคนเป็น 'Admin'
     await knex('users').update({ role: 'Admin' });
     res.send('<h1 style="color:green">เรียบร้อย! ตอนนี้ User ทุกคนเป็น Admin แล้ว</h1><p>กรุณากลับไปที่หน้าเว็บ -> Logout -> แล้ว Login ใหม่ได้เลย</p>');
   } catch (e) {
@@ -689,5 +695,6 @@ app.get('/api/cheat/make-me-admin', async (req, res) => {
   }
 });
 
-const PORT = process.env.port || 5000;
+// ✅ 3. แก้ไข PORT เป็น process.env.PORT (ตัวพิมพ์ใหญ่)
+const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => console.log(`✅ Server with all APIs is running on http://localhost:${PORT}`));
