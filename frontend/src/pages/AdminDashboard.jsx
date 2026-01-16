@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useSocket } from '../contexts/SocketContext';
+import { useAuth } from '../contexts/AuthContext';
 import AnalyticsDashboard from './AnalyticsDashboard';
 import OnlineTechsCard from '../components/OnlineTechsCard';
 
@@ -584,6 +585,7 @@ function InventoryPanel({ inventory, reload }) {
 /* ============== Main Admin Dashboard ============== */
 export default function AdminDashboard() {
   const socket = useSocket();
+  const { currentUser } = useAuth();
   const { section } = useParams();
   const navigate = useNavigate();
 
@@ -670,8 +672,8 @@ export default function AdminDashboard() {
   const assignTicket = async (ticketId, technicianId) => {
     await axios.put(`${API_BASE_URL}/api/tickets/${ticketId}`, { technician_id: technicianId, status: 'Assigned' }, getAuthHeader());
   };
-  const changeRole = async (userId, role) => {
-    await axios.put(`${API_BASE_URL}/api/users/${userId}/role`, { role }, getAuthHeader());
+  const changeRole = async (targetUserId, role) => {
+    await axios.put(`${API_BASE_URL}/api/users/${targetUserId}/role?userId=${currentUser?.id}`, { role }, getAuthHeader());
   };
 
   const stats = useMemo(() => ({
