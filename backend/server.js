@@ -205,9 +205,9 @@ try {
   const GEMINI_API_KEY = process.env.GEMINI_API_KEY || 'AIzaSyDjNOPRU0hH1lQ1sDCyNUAmCsFK8ZP07bs';
   if (GEMINI_API_KEY) {
     const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-    // ใช้ gemini-pro (โมเดลมาตรฐานสำหรับ Free Tier)
-    geminiModel = genAI.getGenerativeModel({ model: 'gemini-pro' });
-    console.log('✅ AI Chat: Google Gemini initialized (gemini-pro)');
+    // ใช้ gemini-1.5-flash-latest
+    geminiModel = genAI.getGenerativeModel({ model: 'gemini-1.5-flash-latest' });
+    console.log('✅ AI Chat: Google Gemini initialized (gemini-1.5-flash-latest)');
   } else {
     console.log('⚠️ AI Chat: GEMINI_API_KEY not set -> using FAQ fallback only');
   }

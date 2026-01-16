@@ -9,8 +9,8 @@ import {
 } from 'lucide-react';
 import axios from 'axios';
 
-// กำหนด URL ตรงๆ เพื่อเลี่ยงปัญหา import.meta ในหน้า Preview
-const API_BASE_URL = 'http://localhost:5000';
+// ใช้ environment variable สำหรับ API URL
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 function Pill({ active, onClick, children, icon: Icon }) {
   return (
