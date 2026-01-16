@@ -7,7 +7,7 @@
 require('dotenv').config();
 
 console.log('--- ALL ENVIRONMENT VARIABLES SEEN BY SERVER ---');
-console.log(process.env); 
+console.log(process.env);
 console.log('--- END OF VARIABLES ---');
 
 const express = require('express');
@@ -19,7 +19,7 @@ const multer = require('multer');
 const path = require('path');
 const nodemailer = require('nodemailer');
 const axios = require('axios');
-const bcrypt = require('bcryptjs'); 
+const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
 const { verifyToken, verifyAdmin } = require('./authMiddleware');
@@ -197,19 +197,22 @@ async function sendEmailNotification(to, subject, text) {
 }
 
 /* ==========================================================
-   ✅ AI Chat Bot (OpenAI + FAQ fallback)
+   ✅ AI Chat Bot (Google Gemini + FAQ fallback)
    ========================================================== */
-let openai = null;
+let geminiModel = null;
 try {
-  const OpenAI = require('openai');
-  if (process.env.OPENAI_API_KEY) {
-    openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-    console.log('✅ AI Chat: OpenAI client initialized');
+  const { GoogleGenerativeAI } = require('@google/generative-ai');
+  const GEMINI_API_KEY = process.env.GEMINI_API_KEY || 'AIzaSyDjNOPRU0hH1lQ1sDCyNUAmCsFK8ZP07bs';
+  if (GEMINI_API_KEY) {
+    const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+    // ใช้ gemini-pro (โมเดลมาตรฐานสำหรับ Free Tier)
+    geminiModel = genAI.getGenerativeModel({ model: 'gemini-pro' });
+    console.log('✅ AI Chat: Google Gemini initialized (gemini-pro)');
   } else {
-    console.log('⚠️ AI Chat: OPENAI_API_KEY not set -> using FAQ fallback only');
+    console.log('⚠️ AI Chat: GEMINI_API_KEY not set -> using FAQ fallback only');
   }
 } catch (e) {
-  console.log('⚠️ AI Chat: openai package not installed -> using FAQ fallback only');
+  console.log('⚠️ AI Chat: @google/generative-ai package error ->', e.message);
 }
 
 // FAQ พื้นฐาน (fallback)
@@ -256,8 +259,8 @@ app.post('/api/ai/assist', async (req, res) => {
 
     const faq = getBasicFaqAnswer(message);
 
-    // ถ้าไม่มี OpenAI -> ตอบด้วย FAQ หรือ fallback
-    if (!openai) {
+    // ถ้าไม่มี Gemini -> ตอบด้วย FAQ หรือ fallback
+    if (!geminiModel) {
       return res.json({
         reply: faq || 'ตอนนี้โหมด AI ปิดอยู่ กรุณาบอกอุปกรณ์/อาการ/เวลาเกิดเหตุ/รูปภาพ เพื่อช่วยให้ทีมช่างแก้ไขได้เร็วขึ้นครับ',
         source: faq ? 'faq' : 'fallback',
@@ -274,30 +277,27 @@ app.post('/api/ai/assist', async (req, res) => {
 - น้ำเสียงสุภาพ กระชับ ไม่แต่งเรื่อง ถ้าข้อมูลไม่พอให้ถามต่อ
 `;
     const faqContext = BASIC_FAQ.map((f, i) => `Q${i + 1}: ${f.q} -> ${f.a}`).join('\n');
+
+    // Build conversation history for Gemini
     const compactHistory = Array.isArray(history) ? history.slice(-8) : [];
+    let conversationText = `${sysPrompt}\n\nFAQ hints:\n${faqContext}\n\n`;
 
-    const messages = [
-      { role: 'system', content: sysPrompt },
-      { role: 'system', content: `FAQ hints (สรุป):\n${faqContext}` },
-      ...compactHistory,
-      { role: 'user', content: message },
-    ];
+    for (const msg of compactHistory) {
+      if (msg.role === 'user') {
+        conversationText += `ผู้ใช้: ${msg.content}\n`;
+      } else if (msg.role === 'assistant') {
+        conversationText += `ผู้ช่วย: ${msg.content}\n`;
+      }
+    }
+    conversationText += `ผู้ใช้: ${message}\nผู้ช่วย:`;
 
-    const model = process.env.AI_MODEL || 'gpt-4o-mini';
-    const completion = await openai.chat.completions.create({
-      model,
-      messages,
-      temperature: 0.3,
-      max_tokens: 600,
-    });
+    const result = await geminiModel.generateContent(conversationText);
+    const response = await result.response;
+    const reply = response.text()?.trim() || faq || 'ฉันยังไม่แน่ใจ ลองบอกรายละเอียดเพิ่มเติม (อุปกรณ์/อาการ/เวลา/ภาพ) ได้ไหมครับ';
 
-    const reply =
-      completion?.choices?.[0]?.message?.content?.trim() ||
-      faq ||
-      'ฉันยังไม่แน่ใจ ลองบอกรายละเอียดเพิ่มเติม (อุปกรณ์/อาการ/เวลา/ภาพ) ได้ไหมครับ';
-    res.json({ reply, source: 'openai' });
+    res.json({ reply, source: 'gemini' });
   } catch (e) {
-    console.error('POST /api/ai/assist error:', e?.response?.data || e.message || e);
+    console.error('POST /api/ai/assist error:', e.message || e);
     const { message } = req.body || {};
     const faq = getBasicFaqAnswer(message);
     res.json({
@@ -363,7 +363,7 @@ app.post('/api/login', async (req, res) => {
     const token = jwt.sign(
       { id: u.id, role: u.role, name: u.name },
       SECRET_KEY,
-      { expiresIn: '1d'}
+      { expiresIn: '1d' }
     );
 
     return res.json({
@@ -383,7 +383,7 @@ app.post('/api/login', async (req, res) => {
 });
 
 // --- Users ---
-app.get('/api/users', verifyToken, async (req, res) => {
+app.get('/api/users', async (req, res) => {
   try {
     const users = await knex('users').select('id', 'name', 'email', 'role');
     res.json(users);
@@ -475,7 +475,7 @@ app.put('/api/me/availability', async (req, res) => {
   try {
     const uid = Number(req.query.userId);
     if (!uid) return res.status(400).json({ message: 'userId is required' });
-    const { accepting } = req.body; 
+    const { accepting } = req.body;
     const val = accepting ? 1 : 0;
     const cnt = await knex('users').where({ id: uid }).update({ accepting_jobs: val });
     if (!cnt) return res.status(404).json({ message: 'User not found' });

@@ -193,39 +193,85 @@ function Header({ title, onToggleSidebar }) {
               </button>
 
               {isNotificationOpen && (
-                <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white dark:bg-slate-700 rounded-lg shadow-xl z-20 border dark:border-slate-600">
-                  <div className="p-4 font-semibold border-b dark:border-slate-600 flex justify-between items-center">
-                    <span className="dark:text-white">การแจ้งเตือน</span>
-                    {unreadCount > 0 && (
-                      <span className="text-xs bg-red-500 text-white font-bold px-2 py-1 rounded-full">
-                        {unreadCount}
-                      </span>
-                    )}
+                <div className="absolute right-0 mt-2 w-80 sm:w-96 overflow-hidden bg-white/95 dark:bg-slate-800/95 backdrop-blur-lg rounded-2xl shadow-2xl z-20 border border-slate-200/70 dark:border-slate-700/60">
+                  {/* Header */}
+                  <div className="relative overflow-hidden p-4 border-b border-slate-200/70 dark:border-slate-700/60">
+                    <div className="absolute -top-10 -right-10 w-24 h-24 bg-gradient-to-br from-indigo-500/10 to-purple-500/5 rounded-full blur-2xl" />
+                    <div className="relative flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="p-1.5 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 shadow-md">
+                          <Bell className="h-4 w-4 text-white" />
+                        </div>
+                        <span className="font-bold text-slate-900 dark:text-white">การแจ้งเตือน</span>
+                      </div>
+                      {unreadCount > 0 && (
+                        <span className="flex items-center justify-center min-w-[24px] h-6 text-xs bg-gradient-to-r from-red-500 to-rose-500 text-white font-bold px-2 rounded-full shadow-lg shadow-red-500/30">
+                          {unreadCount}
+                        </span>
+                      )}
+                    </div>
                   </div>
+
+                  {/* Notification List */}
                   <div className="max-h-96 overflow-y-auto">
                     {notifications.length > 0 ? (
-                      notifications.map((n) => (
-                        <div
-                          key={n.id}
-                          className={`p-4 border-b dark:border-slate-600 ${!n.is_read ? 'bg-indigo-50 dark:bg-slate-600/50' : ''}`}
-                        >
-                          <p className="text-sm dark:text-slate-200">{n.message}</p>
-                          <p className="text-xs text-gray-400 dark:text-slate-400 mt-1">
-                            {new Date(n.created_at).toLocaleString('th-TH')}
-                          </p>
-                        </div>
-                      ))
+                      notifications.map((n, index) => {
+                        const isMessage = n.message?.includes('ข้อความ');
+                        const isStatus = n.message?.includes('สถานะ') || n.message?.includes('เปลี่ยน');
+                        const isAssign = n.message?.includes('มอบหมาย') || n.message?.includes('Assigned');
+
+                        return (
+                          <div
+                            key={n.id}
+                            className={`relative p-4 border-b border-slate-100 dark:border-slate-700/50 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors
+                              ${!n.is_read ? 'bg-gradient-to-r from-indigo-50/50 to-purple-50/50 dark:from-indigo-900/20 dark:to-purple-900/20' : ''}`}
+                          >
+                            <div className="flex gap-3">
+                              {/* Icon */}
+                              <div className={`shrink-0 p-2 rounded-xl shadow-md ${isMessage ? 'bg-gradient-to-br from-blue-500 to-cyan-500' :
+                                  isStatus ? 'bg-gradient-to-br from-amber-500 to-orange-500' :
+                                    isAssign ? 'bg-gradient-to-br from-violet-500 to-purple-500' :
+                                      'bg-gradient-to-br from-indigo-500 to-purple-500'
+                                }`}>
+                                <Bell className="h-4 w-4 text-white" />
+                              </div>
+
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm text-slate-800 dark:text-slate-200 leading-relaxed">{n.message}</p>
+                                <p className="text-xs text-slate-400 dark:text-slate-500 mt-1.5 flex items-center gap-1">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-slate-300 dark:bg-slate-600" />
+                                  {new Date(n.created_at).toLocaleString('th-TH')}
+                                </p>
+                              </div>
+
+                              {/* Unread indicator */}
+                              {!n.is_read && (
+                                <div className="absolute top-4 right-4 w-2 h-2 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 shadow-sm" />
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })
                     ) : (
-                      <p className="p-4 text-sm text-center text-gray-500 dark:text-slate-400">ไม่มีการแจ้งเตือน</p>
+                      <div className="p-8 text-center">
+                        <div className="p-4 rounded-full bg-slate-100 dark:bg-slate-700 w-fit mx-auto mb-3">
+                          <Bell className="h-6 w-6 text-slate-400" />
+                        </div>
+                        <p className="text-sm text-slate-500 dark:text-slate-400">ไม่มีการแจ้งเตือน</p>
+                      </div>
                     )}
                   </div>
+
+                  {/* Footer */}
                   {notifications.length > 0 && (
-                    <button
-                      onClick={markRead}
-                      className="w-full text-center p-2 text-sm text-indigo-600 dark:text-indigo-400 hover:bg-gray-100 dark:hover:bg-slate-600 font-semibold"
-                    >
-                      ทำเครื่องหมายว่าอ่านทั้งหมดแล้ว
-                    </button>
+                    <div className="p-2 border-t border-slate-200/70 dark:border-slate-700/60 bg-slate-50/50 dark:bg-slate-900/50">
+                      <button
+                        onClick={markRead}
+                        className="w-full py-2.5 px-4 text-sm text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 font-semibold rounded-xl transition-colors flex items-center justify-center gap-2"
+                      >
+                        <span>✓</span> ทำเครื่องหมายว่าอ่านแล้วทั้งหมด
+                      </button>
+                    </div>
                   )}
                 </div>
               )}
@@ -267,8 +313,8 @@ export default function MainLayout() {
     const p = location.pathname;
 
     if (p.startsWith('/admin/')) {
-      if (p.startsWith('/admin/tickets'))   return 'จัดการใบแจ้งซ่อม';
-      if (p.startsWith('/admin/users'))     return 'จัดการผู้ใช้งาน';
+      if (p.startsWith('/admin/tickets')) return 'จัดการใบแจ้งซ่อม';
+      if (p.startsWith('/admin/users')) return 'จัดการผู้ใช้งาน';
       if (p.startsWith('/admin/inventory')) return 'จัดการครุภัณฑ์';
       if (p.startsWith('/admin/analytics')) return 'รายงานสรุป';
       return 'ภาพรวม';
