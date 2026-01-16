@@ -21,6 +21,7 @@ const nodemailer = require('nodemailer');
 const axios = require('axios');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const supabase = require('./supabaseClient');
 
 const { verifyToken, verifyAdmin } = require('./authMiddleware');
 const SECRET_KEY = process.env.JWT_SECRET || 'MySecretKey123';
@@ -70,15 +71,37 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 // Health check
 app.get('/api/health', (_req, res) => res.json({ ok: true }));
 
-// --- Multer ---
-const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => cb(null, path.join(__dirname, 'uploads')),
-  filename: (_req, file, cb) => {
-    const unique = Date.now() + '-' + Math.round(Math.random() * 1e9);
-    cb(null, file.fieldname + '-' + unique + path.extname(file.originalname));
+// --- Multer (Memory Storage for Supabase Upload) ---
+const upload = multer({ storage: multer.memoryStorage() });
+
+// Helper: Upload file to Supabase Storage
+async function uploadToSupabase(file) {
+  if (!file) return null;
+
+  const unique = Date.now() + '-' + Math.round(Math.random() * 1e9);
+  const fileName = `${unique}${path.extname(file.originalname)}`;
+  const bucketName = 'ticket-attachments';
+
+  const { data, error } = await supabase.storage
+    .from(bucketName)
+    .upload(fileName, file.buffer, {
+      contentType: file.mimetype,
+      cacheControl: '3600',
+      upsert: false,
+    });
+
+  if (error) {
+    console.error('Supabase Storage upload error:', error);
+    return null;
   }
-});
-const upload = multer({ storage });
+
+  // Get public URL
+  const { data: urlData } = supabase.storage
+    .from(bucketName)
+    .getPublicUrl(fileName);
+
+  return urlData?.publicUrl || null;
+}
 
 // ===== Ensure DB column exists (users.accepting_jobs) =====
 async function ensureAcceptingJobsColumn() {
@@ -576,7 +599,14 @@ app.post('/api/tickets', upload.single('image'), async (req, res) => {
   try {
     const { title, description, building, floor, room, user_id } = req.body;
     if (!title || !description || !user_id) return res.status(400).json({ error: 'Title, description, and user_id are required.' });
-    const image_url = req.file ? `/uploads/${req.file.filename}` : null;
+
+    // Upload image to Supabase Storage (returns full public URL)
+    let image_url = null;
+    if (req.file) {
+      image_url = await uploadToSupabase(req.file);
+      console.log('📷 Image uploaded to Supabase:', image_url);
+    }
+
     const initialLog = { status: 'Submitted', timestamp: new Date().toISOString(), user: 'System' };
     const [{ id }] = await knex('tickets')
       .insert({ title, description, building, floor, room, user_id, status: 'Submitted', image_url, logs: JSON.stringify([initialLog]) })

@@ -248,7 +248,7 @@ function Drawer({ open, onClose, ticket }) {
                   </div>
                   <div className="relative group">
                     <img
-                      src={`${API_BASE_URL}${ticket.image_url}`}
+                      src={ticket.image_url.startsWith('http') ? ticket.image_url : `${API_BASE_URL}${ticket.image_url}`}
                       alt="แนบ"
                       className="w-full max-h-[40vh] object-contain bg-slate-100 dark:bg-slate-800"
                     />

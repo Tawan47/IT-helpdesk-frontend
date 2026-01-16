@@ -12,11 +12,11 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 /**
  * คอมโพเนนต์สำหรับแสดงใบแจ้งซ่อมแต่ละรายการ พร้อมฟังก์ชันการทำงานทั้งหมด
  */
-export default function TicketItem({ ticket, userType, onUpdateStatus = () => {}, onRateTicket = () => {}, users = [] }) {
+export default function TicketItem({ ticket, userType, onUpdateStatus = () => { }, onRateTicket = () => { }, users = [] }) {
     const [isExpanded, setIsExpanded] = useState(false);
     const { currentUser } = useAuth();
     const socket = useSocket();
-    
+
     // --- State สำหรับแชท ---
     const [messages, setMessages] = useState([]);
     const [newMessage, setNewMessage] = useState('');
@@ -24,7 +24,7 @@ export default function TicketItem({ ticket, userType, onUpdateStatus = () => {}
     const chatEndRef = useRef(null);
 
     const getUserName = (userId) => users.find(u => u.id === userId)?.name || 'Unknown User';
-    
+
     // --- ฟังก์ชันสำหรับดึงข้อความเก่า ---
     const fetchMessages = useCallback(async () => {
         if (!ticket.id) return;
@@ -47,7 +47,7 @@ export default function TicketItem({ ticket, userType, onUpdateStatus = () => {}
             if (socket) {
                 // เข้าห้องแชท
                 socket.emit('join_ticket_room', ticket.id);
-                
+
                 // ดักฟังข้อความใหม่
                 const handleNewMessage = (message) => {
                     setMessages(prev => [...prev, message]);
@@ -72,7 +72,7 @@ export default function TicketItem({ ticket, userType, onUpdateStatus = () => {}
     const handleSendMessage = async (e) => {
         e.preventDefault();
         if (newMessage.trim() === '' || !currentUser) return;
-        
+
         const messageData = {
             sender_id: currentUser.id,
             message: newMessage,
@@ -87,7 +87,7 @@ export default function TicketItem({ ticket, userType, onUpdateStatus = () => {}
             alert('ไม่สามารถส่งข้อความได้');
         }
     };
-    
+
     // ส่วนที่เหลือของคอมโพเนนต์ (การแสดงผล, ให้คะแนน) จะคล้ายเดิม
     // ... (State and handlers for rating, etc.)
     const [rating, setRating] = useState(0);
@@ -146,17 +146,17 @@ export default function TicketItem({ ticket, userType, onUpdateStatus = () => {}
                     <div className="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-6">
                         {/* Left Column: Details & Actions */}
                         <div className="space-y-4">
-                           {/* ... (ส่วนแสดงรายละเอียด, รูปภาพ, ให้คะแนน) ... */}
-                           <div>
+                            {/* ... (ส่วนแสดงรายละเอียด, รูปภาพ, ให้คะแนน) ... */}
+                            <div>
                                 <p className="font-semibold text-slate-700 dark:text-slate-300">รายละเอียดปัญหา:</p>
                                 <p className="text-slate-600 dark:text-slate-400 whitespace-pre-wrap">{ticket.description || 'ไม่มีรายละเอียด'}</p>
                             </div>
                             {ticket.image_url && (
                                 <div>
-                                    <p className="font-semibold text-slate-700 dark:text-slate-300 flex items-center mb-2"><ImageIcon size={16} className="mr-2"/> รูปภาพประกอบ:</p>
-                                    {/* ✅ 4. แก้ไข URL ของรูปภาพให้ถูกต้อง */}
-                                    <a href={`${API_BASE_URL}${ticket.image_url}`} target="_blank" rel="noopener noreferrer" className="inline-block">
-                                        <img src={`${API_BASE_URL}${ticket.image_url}`} alt="Ticket attachment" className="rounded-lg max-w-full sm:max-w-xs shadow-md border dark:border-slate-600 transition-transform hover:scale-105" />
+                                    <p className="font-semibold text-slate-700 dark:text-slate-300 flex items-center mb-2"><ImageIcon size={16} className="mr-2" /> รูปภาพประกอบ:</p>
+                                    {/* ✅ รองรับทั้ง Supabase URL (http...) และ legacy path (/uploads/...) */}
+                                    <a href={ticket.image_url.startsWith('http') ? ticket.image_url : `${API_BASE_URL}${ticket.image_url}`} target="_blank" rel="noopener noreferrer" className="inline-block">
+                                        <img src={ticket.image_url.startsWith('http') ? ticket.image_url : `${API_BASE_URL}${ticket.image_url}`} alt="Ticket attachment" className="rounded-lg max-w-full sm:max-w-xs shadow-md border dark:border-slate-600 transition-transform hover:scale-105" />
                                     </a>
                                 </div>
                             )}
@@ -169,11 +169,11 @@ export default function TicketItem({ ticket, userType, onUpdateStatus = () => {}
                                     {userType === 'User' && ticket.user_id === currentUser?.id && ticket.status === 'Submitted' && (
                                         <Link to={`/tickets/${ticket.id}/edit`} className="block">
                                             <button className="w-full text-sm bg-slate-200 hover:bg-slate-300 dark:bg-slate-600 dark:hover:bg-slate-500 text-slate-800 dark:text-white font-bold py-2 px-4 rounded-lg transition-colors flex items-center justify-center">
-                                                <Edit size={16} className="mr-2"/> แก้ไขใบแจ้งซ่อม
+                                                <Edit size={16} className="mr-2" /> แก้ไขใบแจ้งซ่อม
                                             </button>
                                         </Link>
                                     )}
-                                     {userType !== 'User' && ticket.technician_id === currentUser?.id && ticket.status !== 'Completed' && (
+                                    {userType !== 'User' && ticket.technician_id === currentUser?.id && ticket.status !== 'Completed' && (
                                         <>
                                             {ticket.status === 'Assigned' && <button onClick={() => onUpdateStatus(ticket.id, 'In Progress')} className="w-full text-sm bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded-lg transition-colors">เริ่มดำเนินการ</button>}
                                             {ticket.status === 'In Progress' && <button onClick={() => onUpdateStatus(ticket.id, 'Completed')} className="w-full text-sm bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg transition-colors">ปิดงาน (เสร็จสิ้น)</button>}
@@ -202,13 +202,13 @@ export default function TicketItem({ ticket, userType, onUpdateStatus = () => {}
                         {/* Right Column: Chat */}
                         <div className="bg-white dark:bg-slate-800 p-4 rounded-lg shadow-sm border dark:border-slate-700 flex flex-col h-[500px]">
                             <h4 className="font-semibold text-slate-800 dark:text-white mb-3 flex items-center">
-                                <MessageSquare size={18} className="mr-2"/> พูดคุยกับช่าง
+                                <MessageSquare size={18} className="mr-2" /> พูดคุยกับช่าง
                             </h4>
                             <div className="flex-1 overflow-y-auto pr-2 space-y-4 mb-4">
                                 {isLoadingChat && <p className="text-center text-slate-500">กำลังโหลดข้อความ...</p>}
                                 {!isLoadingChat && messages.map(msg => (
                                     <div key={msg.id} className={`flex items-end gap-2 ${msg.sender_id === currentUser?.id ? 'justify-end' : 'justify-start'}`}>
-                                       {msg.sender_id !== currentUser?.id && <img src={`https://i.pravatar.cc/32?u=${getUserName(msg.sender_id)}`} alt="avatar" className="h-8 w-8 rounded-full" />}
+                                        {msg.sender_id !== currentUser?.id && <img src={`https://i.pravatar.cc/32?u=${getUserName(msg.sender_id)}`} alt="avatar" className="h-8 w-8 rounded-full" />}
                                         <div className={`max-w-xs md:max-w-md p-3 rounded-2xl ${msg.sender_id === currentUser?.id ? 'bg-indigo-500 text-white rounded-br-none' : 'bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-bl-none'}`}>
                                             <p className="text-sm">{msg.message}</p>
                                         </div>
@@ -217,7 +217,7 @@ export default function TicketItem({ ticket, userType, onUpdateStatus = () => {}
                                 <div ref={chatEndRef} />
                             </div>
                             <form onSubmit={handleSendMessage} className="flex items-center gap-2 border-t border-slate-200 dark:border-slate-700 pt-3">
-                                <input 
+                                <input
                                     type="text"
                                     value={newMessage}
                                     onChange={(e) => setNewMessage(e.target.value)}
